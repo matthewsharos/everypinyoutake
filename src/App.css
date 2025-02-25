@@ -145,7 +145,6 @@ body {
   width: calc(100% - 200px);
   margin: -10px auto 20px;
   overflow: visible;
-  min-height: 700px;
 }
 
 .board-image {
@@ -171,7 +170,7 @@ body {
   background: transparent;
 }
 
-/* Dragging pin follows the mouse */
+/* Dragging pin follows the mouse/touch */
 .dragging-pin {
   position: absolute;
   width: 200px;
@@ -282,18 +281,35 @@ body {
   .pin-sidebar {
     position: static;
     width: 90%;
-    margin-bottom: 20px;
+    height: 150px; /* Reduced height for horizontal layout */
+    margin: 0 auto 20px;
     top: auto;
     left: auto;
+    overflow-x: auto; /* Enable horizontal scrolling */
+    overflow-y: hidden; /* Prevent vertical overflow */
+  }
+  .pin-scroll {
+    flex-direction: row; /* Horizontal layout for pins */
+    animation: scrollPinsHorizontal 20s linear infinite; /* New horizontal animation */
+  }
+  @keyframes scrollPinsHorizontal {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-100%);
+    }
   }
   .play-toggle,
   .reset-button {
     position: static;
     margin: 10px 5px;
+    padding: 10px 20px; /* Increase touch target size for mobile */
   }
   .pin-board {
     width: 90%;
-    margin: 20px auto;
+    margin: 0 auto;
+    min-height: unset; /* Remove min-height to scale naturally */
   }
   .page-title {
     font-size: 2em;
@@ -304,18 +320,37 @@ body {
     top: 50px;
     transform: translateX(-50%);
   }
+  .pin-container {
+    width: 100px;
+    height: 100px;
+  }
+  .dragging-pin {
+    width: 120px;
+    height: 120px;
+  }
+  .pin-thumb {
+    width: 80px; /* Smaller pins for horizontal layout */
+    height: 80px;
+  }
+  /* Ensure touch events don’t get blocked */
+  .container.dragging {
+    touch-action: none; /* Prevents default touch behaviors like scrolling */
+  }
 }
 
 @media (max-width: 480px) {
   .pin-sidebar {
     width: 80%;
-    height: 400px;
+    height: 120px; /* Further reduced for smaller screens */
   }
   .pin-board {
     width: 90%;
-    min-height: 500px;
   }
   .page-title {
     font-size: 1.5em;
+  }
+  .pin-thumb {
+    width: 60px; /* Even smaller pins for tiny screens */
+    height: 60px;
   }
 }
