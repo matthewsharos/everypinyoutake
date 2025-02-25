@@ -281,8 +281,8 @@ body {
   .pin-sidebar {
     position: static;
     width: 90%;
-    height: 150px; /* Reduced height for horizontal layout */
-    margin: 0 auto 20px;
+    height: 120px; /* Reduced height for horizontal layout */
+    margin: 50px auto 20px;
     top: auto;
     left: auto;
     overflow-x: auto; /* Enable horizontal scrolling */
@@ -341,7 +341,7 @@ body {
 @media (max-width: 480px) {
   .pin-sidebar {
     width: 80%;
-    height: 120px; /* Further reduced for smaller screens */
+    height: 100px; /* Further reduced for smaller screens */
   }
   .pin-board {
     width: 90%;

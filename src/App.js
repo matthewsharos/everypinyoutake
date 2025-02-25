@@ -53,12 +53,11 @@ function App() {
     localStorage.setItem("availablePins", JSON.stringify(availablePins));
   }, [availablePins]);
 
-  // Update pin position while dragging (supporting both mouse and touch, adjusting offset for mobile)
+  // Update pin position while dragging (supporting both mouse and touch, adjusting offset dynamically)
   useEffect(() => {
     function handleMove(e) {
       if (!selectedPin) return;
       const containerRect = containerRef.current.getBoundingClientRect();
-      const isMobile = e.type === "touchmove";
       let clientX, clientY;
 
       if (e.type === "mousemove") {
@@ -71,11 +70,14 @@ function App() {
 
       const mouseX = clientX - containerRect.left;
       const mouseY = clientY - containerRect.top;
-      const pinWidth = isMobile ? 120 : 200; // Match CSS .dragging-pin sizes
+      const isMobile = window.innerWidth <= 767;
+      const pinWidth = isMobile ? 120 : 200; // Match .dragging-pin CSS
       const pinHeight = isMobile ? 120 : 200;
+
+      // Adjust offsets for better alignment
       setPinPosition({
-        x: mouseX - pinWidth / 2, // Center horizontally
-        y: mouseY - pinHeight / 2, // Center vertically
+        x: mouseX - pinWidth / 2 - (isMobile ? 20 : 40), // Shift left by 20px (mobile) or 40px (desktop)
+        y: mouseY - pinHeight / 2 - (isMobile ? 200 : 0), // Shift up by 200px on mobile, no shift on desktop
       });
     }
 
@@ -100,7 +102,6 @@ function App() {
     }
     setSelectedPin(pin);
     const containerRect = containerRef.current.getBoundingClientRect();
-    const isMobile = e.type === "touchstart";
     let clientX, clientY;
 
     if (e.type === "mousedown") {
@@ -113,11 +114,14 @@ function App() {
 
     const mouseX = clientX - containerRect.left;
     const mouseY = clientY - containerRect.top;
-    const pinWidth = isMobile ? 120 : 200;
+    const isMobile = window.innerWidth <= 767;
+    const pinWidth = isMobile ? 120 : 200; // Match .dragging-pin CSS
     const pinHeight = isMobile ? 120 : 200;
+
+    // Adjust offsets for better alignment
     setPinPosition({
-      x: mouseX - pinWidth / 2,
-      y: mouseY - pinHeight / 2,
+      x: mouseX - pinWidth / 2 - (isMobile ? 20 : 40), // Shift left by 20px (mobile) or 40px (desktop)
+      y: mouseY - pinHeight / 2 - (isMobile ? 200 : 0), // Shift up by 200px on mobile, no shift on desktop
     });
   };
 
@@ -125,7 +129,7 @@ function App() {
   const handleDrop = (e) => {
     if (!selectedPin) return;
     let clientX, clientY;
-    const isMobile = e.type === "touchend";
+    const isMobile = window.innerWidth <= 767;
 
     if (e.type === "mouseup") {
       clientX = e.clientX;
@@ -142,20 +146,16 @@ function App() {
       clientY >= boardRect.top &&
       clientY <= boardRect.bottom
     ) {
-      const dropX = clientX - boardRect.left;
-      const dropY = clientY - boardRect.top;
-      const pinWidth = isMobile ? 100 : 180; // Match .pin-container sizes
-      const pinHeight = isMobile ? 100 : 180;
-      const finalX = dropX - pinWidth / 2;
-      const finalY = dropY - pinHeight / 2;
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const dropX = clientX - boardRect.left - (isMobile ? 25 : 80); // Shift left by 20px on desktop, 30px on mobile
+      const dropY = clientY - boardRect.top - (isMobile ? 40 : 100); // Shift up by 50px on mobile, 100px on desktop to align closer to mouse
       setBoardPins((prev) => [
         ...prev,
-        { ...selectedPin, position: { x: finalX, y: finalY } },
+        { ...selectedPin, position: { x: dropX, y: dropY } }, // Drop pin exactly where the mouse/finger is, adjusted upward and left on desktop
       ]);
       new Audio(pinSound).play();
-      const containerRect = containerRef.current.getBoundingClientRect();
-      const sparkleX = clientX - containerRect.left - (isMobile ? 50 : 100);
-      const sparkleY = clientY - containerRect.top - (isMobile ? 50 : 100);
+      const sparkleX = clientX - containerRect.left - (isMobile ? 40 : 150); // Align sparkle with pin center, shifted left
+      const sparkleY = clientY - containerRect.top - (isMobile ? 260 : 40); // Align sparkle with pin center, shifted up on mobile
       setSparklePosition({ x: sparkleX, y: sparkleY });
       setTimeout(() => setSparklePosition(null), 1000);
     } else {
