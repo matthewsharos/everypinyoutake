@@ -83,49 +83,65 @@ function App() {
 
     const container = containerRef.current;
     container.addEventListener("mousemove", handleMove);
-    container.addEventListener("touchmove", handleMove, { passive: false });
+    container.addEventListener("touchmove", handleMove, { passive: false }); // Prevent default touch scrolling
     return () => {
       container.removeEventListener("mousemove", handleMove);
       container.removeEventListener("touchmove", handleMove);
     };
   }, [selectedPin]);
 
-  // Pick up a pin from sidebar or board (supporting both mouse and touch)
+  // Pick up a pin from sidebar or board (supporting both mouse and touch, with improved touch handling)
   const handlePickUp = (pin, origin) => (e) => {
     e.stopPropagation();
     e.preventDefault();
-    if (selectedPin) return;
-    if (origin === "sidebar") {
-      setAvailablePins((prev) => prev.filter((p) => p.alt !== pin.alt));
-    } else if (origin === "board") {
-      setBoardPins((prev) => prev.filter((p) => p.alt !== pin.alt));
-    }
-    setSelectedPin(pin);
-    const containerRect = containerRef.current.getBoundingClientRect();
-    let clientX, clientY;
-
-    if (e.type === "mousedown") {
-      clientX = e.clientX;
-      clientY = e.clientY;
-    } else if (e.type === "touchstart") {
-      clientX = e.touches[0].clientX;
-      clientY = e.touches[0].clientY;
-    }
-
-    const mouseX = clientX - containerRect.left;
-    const mouseY = clientY - containerRect.top;
     const isMobile = window.innerWidth <= 767;
-    const pinWidth = isMobile ? 120 : 200; // Match .dragging-pin CSS
-    const pinHeight = isMobile ? 120 : 200;
+    if (isMobile && e.type === "touchstart" && !selectedPin) {
+      // Ensure touchstart immediately picks up the pin, preventing scroll
+      if (origin === "sidebar") {
+        setAvailablePins((prev) => prev.filter((p) => p.alt !== pin.alt));
+      } else if (origin === "board") {
+        setBoardPins((prev) => prev.filter((p) => p.alt !== pin.alt));
+      }
+      setSelectedPin(pin);
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const clientX = e.touches[0].clientX;
+      const clientY = e.touches[0].clientY;
+      const mouseX = clientX - containerRect.left;
+      const mouseY = clientY - containerRect.top;
+      const pinWidth = isMobile ? 120 : 200; // Match .dragging-pin CSS
+      const pinHeight = isMobile ? 120 : 200;
 
-    // Adjust offsets for better alignment
-    setPinPosition({
-      x: mouseX - pinWidth / 2 - (isMobile ? 20 : 40), // Shift left by 20px (mobile) or 40px (desktop)
-      y: mouseY - pinHeight / 2 - (isMobile ? 200 : 0), // Shift up by 200px on mobile, no shift on desktop
-    });
+      // Adjust offsets for better alignment
+      setPinPosition({
+        x: mouseX - pinWidth / 2 - (isMobile ? 20 : 40), // Shift left by 20px (mobile) or 40px (desktop)
+        y: mouseY - pinHeight / 2 - (isMobile ? 200 : 0), // Shift up by 200px on mobile, no shift on desktop
+      });
+    } else if (!isMobile || e.type === "mousedown") {
+      // Handle desktop/mouse events as before
+      if (selectedPin) return;
+      if (origin === "sidebar") {
+        setAvailablePins((prev) => prev.filter((p) => p.alt !== pin.alt));
+      } else if (origin === "board") {
+        setBoardPins((prev) => prev.filter((p) => p.alt !== pin.alt));
+      }
+      setSelectedPin(pin);
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const clientX = e.clientX;
+      const clientY = e.clientY;
+      const mouseX = clientX - containerRect.left;
+      const mouseY = clientY - containerRect.top;
+      const pinWidth = isMobile ? 120 : 200; // Match .dragging-pin CSS
+      const pinHeight = isMobile ? 120 : 200;
+
+      // Adjust offsets for better alignment
+      setPinPosition({
+        x: mouseX - pinWidth / 2 - (isMobile ? 20 : 40), // Shift left by 20px (mobile) or 40px (desktop)
+        y: mouseY - pinHeight / 2 - (isMobile ? 200 : 0), // Shift up by 200px on mobile, no shift on desktop
+      });
+    }
   };
 
-  // Drop the selected pin on board (if within bounds) or back to sidebar (supporting both mouse and touch)
+  // Drop the selected pin on board (if within bounds) or back to sidebar (supporting both mouse and touch, with improved touch handling)
   const handleDrop = (e) => {
     if (!selectedPin) return;
     let clientX, clientY;
@@ -208,6 +224,7 @@ function App() {
         ref={containerRef}
         onMouseUp={handleDrop}
         onTouchEnd={handleDrop}
+        onTouchStart={(e) => e.preventDefault()} // Prevent touch scrolling on container
         style={{
           cursor: selectedPin
             ? `url(${mickeyHand}) 32 32, pointer`
@@ -226,6 +243,7 @@ function App() {
                 className="pin-item"
                 onMouseDown={handlePickUp(pin, "sidebar")}
                 onTouchStart={handlePickUp(pin, "sidebar")}
+                onTouchMove={(e) => e.preventDefault()} // Prevent touch scrolling on pin items
               >
                 <img src={pin.src} alt={pin.alt} className="pin-thumb" loading="lazy" />
               </div>
@@ -262,6 +280,7 @@ function App() {
               style={{ left: pin.position.x, top: pin.position.y }}
               onMouseDown={handlePickUp(pin, "board")}
               onTouchStart={handlePickUp(pin, "board")}
+              onTouchMove={(e) => e.preventDefault()} // Prevent touch scrolling on pins
             >
               <img src={pin.src} alt={pin.alt} className="pin" loading="lazy" />
             </div>
