@@ -1,38 +1,321 @@
+/* Background: (Your existing SVG background remains as set previously) */
+body {
+  margin: 0;
+  padding: 0;
+  background: url("data:image/svg+xml,%3Csvg width='800' height='600' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3ClinearGradient id='bggrad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%230038e0;stop-opacity:1'/%3E%3Cstop offset='100%25' style='stop-color:%237a24c2;stop-opacity:1'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='800' height='600' fill='url(%23bggrad)'/%3E%3Cg id='castle'%3E%3Cpolygon points='400,200 390,250 410,250' fill='%236FA8DC'/%3E%3Cpolygon points='390,250 380,290 420,290 410,250' fill='%2393C47D'/%3E%3Cpolygon points='380,290 370,330 430,330 420,290' fill='%23CFE2F3'/%3E%3Cpolygon points='370,330 360,380 440,380 430,330' fill='%23FFE599'/%3E%3Cpolygon points='395,180 405,180 400,200' fill='%23B4A7D6'/%3E%3C/g%3E%3Cg id='tinkerbell'%3E%3Cpolygon points='410,160 412,165 415,160 413,170 410,175 407,170 405,160' fill='%23FFD700' opacity='0.9'/%3E%3C/g%3E%3Cg id='teacups'%3E%3Cellipse cx='200' cy='500' rx='40' ry='20' fill='%23ff9ef9'/%3E%3Cellipse cx='280' cy='500' rx='40' ry='20' fill='%23ffdf6b'/%3E%3C/g%3E%3Cpolygon points='100,100 103,108 110,110 103,112 100,120 97,112 90,110 97,108' fill='%23fff' opacity='0.8'/%3E%3Cpolygon points='700,50 703,58 710,60 703,62 700,70 697,62 690,60 697,58' fill='%23fff' opacity='0.8'/%3E%3C/svg%3E") no-repeat center center fixed;
+  background-size: cover;
+}
+
 .App {
   text-align: center;
-}
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
+  font-family: Arial, sans-serif;
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
+  padding: 0;
+}
+
+/* Page header with Walt Disney–inspired title (white) */
+.page-header {
+  position: relative;
+  padding: 10px 0;
+  z-index: 10;
+  margin-bottom: 10px;
+}
+
+.page-title {
+  margin: 0;
+  font-family: "Waltograph", cursive;
+  font-size: 3.5em;
+  color: white;
+  text-shadow: 0 0 10px rgba(255,255,255,0.8);
+  margin-top: 5px;
+}
+
+.board-count {
+  margin-top: 10px;
+  font-weight: bold;
   color: white;
 }
 
-.App-link {
-  color: #61dafb;
+/* Instagram icon in header */
+.instagram-link {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: inline-block;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
+/* Container for board and sidebar */
+.container {
+  position: relative;
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0;
+  margin-top: -40px;
+}
+
+/* Force all children to inherit custom cursor while dragging */
+.container.dragging * {
+  cursor: inherit !important;
+}
+
+/* Sidebar (narrower) */
+.pin-sidebar {
+  width: 160px;
+  padding: 10px;
+  background: #f8e8a2;
+  border: 2px solid #ff4d4d;
+  height: 600px;
+  overflow: hidden;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(255,215,0,0.5);
+  position: absolute;
+  left: 20px;
+  top: 100px;
+  z-index: 2;
+}
+
+/* Animated scrolling container for pins */
+.pin-scroll {
+  display: flex;
+  flex-direction: column;
+  animation: scrollPins 20s linear infinite;
+}
+
+@keyframes scrollPins {
+  0% {
+    transform: translateY(0);
   }
-  to {
-    transform: rotate(360deg);
+  100% {
+    transform: translateY(-50%);
+  }
+}
+
+.pin-item {
+  margin: 10px 0;
+  transition: transform 0.2s ease, opacity 0.3s ease;
+  cursor: pointer;
+}
+
+.pin-thumb {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border: none;
+  border-radius: 5px;
+}
+
+/* Pause/Play button above the sidebar */
+.play-toggle {
+  position: absolute;
+  left: 20px;
+  top: 60px;
+  padding: 5px 10px;
+  background: #1e90ff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 1em;
+  cursor: pointer;
+}
+
+/* Reset button (now just "reset" with fireworks) */
+.reset-button {
+  position: absolute;
+  left: 100px;
+  top: 60px;
+  padding: 5px 10px;
+  background: linear-gradient(45deg, #ff69b4, #32cd32);
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 1em;
+  cursor: pointer;
+  z-index: 10;
+  box-shadow: 0 0 5px rgba(255,215,0,0.6);
+  transition: transform 0.2s ease;
+}
+
+.reset-button:hover {
+  transform: scale(1.1);
+}
+
+/* Pin board (made larger) */
+.pin-board {
+  position: relative;
+  width: calc(100% - 200px);
+  margin: -10px auto 20px;
+  overflow: visible;
+  min-height: 700px;
+}
+
+.board-image {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  display: block;
+}
+
+/* Pins on the board */
+.pin-container {
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  z-index: 3;
+  cursor: pointer;
+}
+
+.pin {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: transparent;
+}
+
+/* Dragging pin follows the mouse */
+.dragging-pin {
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.dragging-pin .pin {
+  box-shadow: 0 0 15px rgba(255,215,0,0.8),
+    0 0 5px rgba(255,215,0,0.6);
+}
+
+/* Sparkle effect after dropping */
+.sparkle {
+  width: 100px;
+  height: 100px;
+  position: absolute;
+  background: radial-gradient(circle, #ffff00 0%, transparent 70%);
+  opacity: 0.8;
+  animation: sparkleAnimation 1s ease-out forwards;
+  z-index: 5;
+}
+
+@keyframes sparkleAnimation {
+  0% {
+    transform: scale(0);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+/* Fireworks container (positioned over the reset button) */
+.fireworks {
+  position: absolute;
+  left: 100px;
+  top: 60px;
+  width: 150px;
+  height: 150px;
+  pointer-events: none;
+  z-index: 999;
+}
+
+/* Each firework burst in pink and green */
+.firework-burst {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 20px;
+  height: 20px;
+  background: radial-gradient(circle, #ff69b4 0%, #32cd32 100%);
+  border-radius: 50%;
+  transform-origin: center;
+  animation: firework-burst 1.2s ease-out forwards;
+}
+
+.firework-burst:nth-child(1) {
+  animation-delay: 0s;
+}
+.firework-burst:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.firework-burst:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes firework-burst {
+  0% {
+    transform: translate(-50%, -50%) scale(0.2);
+    opacity: 1;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(2);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(3);
+    opacity: 0;
+  }
+}
+
+/* Footer with small text at the very bottom */
+.page-footer {
+  text-align: center;
+  color: white;
+  font-size: 0.8em;
+  padding: 10px;
+  bottom: 0;
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+/* Responsive layout adjustments */
+@media (max-width: 1200px) {
+  .pin-board {
+    width: calc(100% - 180px);
+  }
+}
+
+@media (max-width: 767px) {
+  .pin-sidebar {
+    position: static;
+    width: 90%;
+    margin-bottom: 20px;
+    top: auto;
+    left: auto;
+  }
+  .play-toggle,
+  .reset-button {
+    position: static;
+    margin: 10px 5px;
+  }
+  .pin-board {
+    width: 90%;
+    margin: 20px auto;
+  }
+  .page-title {
+    font-size: 2em;
+  }
+  .fireworks {
+    position: fixed;
+    left: 50%;
+    top: 50px;
+    transform: translateX(-50%);
+  }
+}
+
+@media (max-width: 480px) {
+  .pin-sidebar {
+    width: 80%;
+    height: 400px;
+  }
+  .pin-board {
+    width: 90%;
+    min-height: 500px;
+  }
+  .page-title {
+    font-size: 1.5em;
   }
 }
