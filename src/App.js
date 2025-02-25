@@ -27,9 +27,11 @@ function App() {
   const [sparklePosition, setSparklePosition] = useState(null);
   const [isPlaying, setIsPlaying] = useState(true); // Controls sidebar scrolling
   const [showFireworks, setShowFireworks] = useState(false); // Controls fireworks animation
+  const [isDragging, setIsDragging] = useState(false); // Track dragging state for sidebar control
 
   const containerRef = useRef(null);
   const boardRef = useRef(null);
+  const sidebarRef = useRef(null); // Ref for sidebar to control touch/animation
 
   // On initial load, check localStorage for saved boardPins & availablePins
   useEffect(() => {
@@ -96,13 +98,17 @@ function App() {
     e.preventDefault();
     const isMobile = window.innerWidth <= 767;
     if (isMobile && e.type === "touchstart" && !selectedPin) {
-      // Ensure touchstart immediately picks up the pin, preventing scroll
+      // Ensure touchstart immediately picks up the pin, preventing scroll and sidebar movement
+      if (sidebarRef.current) {
+        sidebarRef.current.style.touchAction = "none"; // Disable sidebar touch scrolling
+      }
       if (origin === "sidebar") {
         setAvailablePins((prev) => prev.filter((p) => p.alt !== pin.alt));
       } else if (origin === "board") {
         setBoardPins((prev) => prev.filter((p) => p.alt !== pin.alt));
       }
       setSelectedPin(pin);
+      setIsDragging(true); // Set dragging state to pause sidebar
       const containerRect = containerRef.current.getBoundingClientRect();
       const clientX = e.touches[0].clientX;
       const clientY = e.touches[0].clientY;
@@ -125,6 +131,7 @@ function App() {
         setBoardPins((prev) => prev.filter((p) => p.alt !== pin.alt));
       }
       setSelectedPin(pin);
+      setIsDragging(true); // Set dragging state to pause sidebar
       const containerRect = containerRef.current.getBoundingClientRect();
       const clientX = e.clientX;
       const clientY = e.clientY;
@@ -178,6 +185,10 @@ function App() {
       setAvailablePins((prev) => [...prev, selectedPin]);
     }
     setSelectedPin(null);
+    setIsDragging(false); // Reset dragging state to resume sidebar
+    if (sidebarRef.current) {
+      sidebarRef.current.style.touchAction = "auto"; // Re-enable sidebar touch scrolling
+    }
     setPinPosition({ x: 0, y: 0 });
   };
 
@@ -225,17 +236,21 @@ function App() {
         onMouseUp={handleDrop}
         onTouchEnd={handleDrop}
         onTouchStart={(e) => e.preventDefault()} // Prevent touch scrolling on container
+        onTouchMove={(e) => e.preventDefault()} // Prevent touch scrolling on container
         style={{
           cursor: selectedPin
             ? `url(${mickeyHand}) 32 32, pointer`
             : "default",
         }}
       >
-        {/* Sidebar with rolling pin thumbnails (horizontal on mobile) */}
-        <div className="pin-sidebar">
+        {/* Sidebar with rolling pin thumbnails (horizontal on mobile), disable touch/animation when dragging */}
+        <div className="pin-sidebar" ref={sidebarRef}>
           <div
             className="pin-scroll"
-            style={{ animationPlayState: isPlaying ? "running" : "paused" }}
+            style={{
+              animationPlayState: isDragging || !isPlaying ? "paused" : "running", // Pause animation when dragging
+              pointerEvents: isDragging ? "none" : "auto", // Disable touch on sidebar when dragging
+            }}
           >
             {availablePins.map((pin) => (
               <div

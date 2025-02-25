@@ -280,7 +280,7 @@ body {
 @media (max-width: 767px) {
   .pin-sidebar {
     position: static;
-    width: 90%;
+    width: 95%;
     height: 120px; /* Reduced height for horizontal layout */
     margin: 50px auto 20px;
     top: auto;
@@ -307,8 +307,8 @@ body {
     padding: 10px 20px; /* Increase touch target size for mobile */
   }
   .pin-board {
-    width: 90%;
-    margin: 0 auto;
+    width: 100%; /* Increased width to take up more space, reducing side margins */
+    margin: 0 auto; /* Center with minimal margins */
     min-height: unset; /* Remove min-height to scale naturally */
   }
   .page-title {
@@ -344,7 +344,7 @@ body {
     height: 100px; /* Further reduced for smaller screens */
   }
   .pin-board {
-    width: 90%;
+    width: 96%; /* Increased width for very small screens, reducing side margins */
   }
   .page-title {
     font-size: 1.5em;
