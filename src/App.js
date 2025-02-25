@@ -2,9 +2,9 @@ import React, { useState, useRef, useEffect } from "react";
 import "./App.css";
 import pinBoard from "./images/pin-board.png";
 import mickeyHand from "./images/mickey-hand.png";
-import pinSound from "./sounds/pin-sound.mp3";  // Make sure this file exists
+import pinSound from "./sounds/pin-sound.mp3";
 
-// Dynamically import all images from src/pins/
+// Dynamically import all images from src/pins/ with lazy loading
 function importAll(r) {
   return r.keys().map((key, index) => ({
     src: r(key),
@@ -14,6 +14,7 @@ function importAll(r) {
       .split(".")
       .shift()
       .replace(/[^a-zA-Z0-9-]/g, "-")}-${index}`,
+    loading: "lazy", // Lazy-load images
   }));
 }
 const pinImages = importAll(require.context("./pins/", false, /\.(png|jpe?g|svg)$/));
@@ -52,24 +53,42 @@ function App() {
     localStorage.setItem("availablePins", JSON.stringify(availablePins));
   }, [availablePins]);
 
-  // Update pin position while dragging
+  // Update pin position while dragging (supporting both mouse and touch, adjusting offset for mobile)
   useEffect(() => {
-    function handleMouseMove(e) {
+    function handleMove(e) {
       if (!selectedPin) return;
       const containerRect = containerRef.current.getBoundingClientRect();
-      const mouseX = e.clientX - containerRect.left;
-      const mouseY = e.clientY - containerRect.top;
+      const isMobile = e.type === "touchmove";
+      let clientX, clientY;
+
+      if (e.type === "mousemove") {
+        clientX = e.clientX;
+        clientY = e.clientY;
+      } else if (e.type === "touchmove") {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+      }
+
+      const mouseX = clientX - containerRect.left;
+      const mouseY = clientY - containerRect.top;
+      const pinWidth = isMobile ? 120 : 200; // Match CSS .dragging-pin sizes
+      const pinHeight = isMobile ? 120 : 200;
       setPinPosition({
-        x: mouseX - 150, // Adjust offset so pin is more left
-        y: mouseY - 100,
+        x: mouseX - pinWidth / 2, // Center horizontally
+        y: mouseY - pinHeight / 2, // Center vertically
       });
     }
+
     const container = containerRef.current;
-    container.addEventListener("mousemove", handleMouseMove);
-    return () => container.removeEventListener("mousemove", handleMouseMove);
+    container.addEventListener("mousemove", handleMove);
+    container.addEventListener("touchmove", handleMove, { passive: false });
+    return () => {
+      container.removeEventListener("mousemove", handleMove);
+      container.removeEventListener("touchmove", handleMove);
+    };
   }, [selectedPin]);
 
-  // Pick up a pin from sidebar or board
+  // Pick up a pin from sidebar or board (supporting both mouse and touch)
   const handlePickUp = (pin, origin) => (e) => {
     e.stopPropagation();
     e.preventDefault();
@@ -81,43 +100,65 @@ function App() {
     }
     setSelectedPin(pin);
     const containerRect = containerRef.current.getBoundingClientRect();
-    const mouseX = e.clientX - containerRect.left;
-    const mouseY = e.clientY - containerRect.top;
+    const isMobile = e.type === "touchstart";
+    let clientX, clientY;
+
+    if (e.type === "mousedown") {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    } else if (e.type === "touchstart") {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    }
+
+    const mouseX = clientX - containerRect.left;
+    const mouseY = clientY - containerRect.top;
+    const pinWidth = isMobile ? 120 : 200;
+    const pinHeight = isMobile ? 120 : 200;
     setPinPosition({
-      x: mouseX - 120,
-      y: mouseY - 100,
+      x: mouseX - pinWidth / 2,
+      y: mouseY - pinHeight / 2,
     });
   };
 
-  // Drop the selected pin on board (if within bounds) or back to sidebar
+  // Drop the selected pin on board (if within bounds) or back to sidebar (supporting both mouse and touch)
   const handleDrop = (e) => {
     if (!selectedPin) return;
-    const clickX = e.clientX;
-    const clickY = e.clientY;
+    let clientX, clientY;
+    const isMobile = e.type === "touchend";
+
+    if (e.type === "mouseup") {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    } else if (e.type === "touchend") {
+      clientX = e.changedTouches[0].clientX;
+      clientY = e.changedTouches[0].clientY;
+    }
+
     const boardRect = boardRef.current.getBoundingClientRect();
     if (
-      clickX >= boardRect.left &&
-      clickX <= boardRect.right &&
-      clickY >= boardRect.top &&
-      clickY <= boardRect.bottom
+      clientX >= boardRect.left &&
+      clientX <= boardRect.right &&
+      clientY >= boardRect.top &&
+      clientY <= boardRect.bottom
     ) {
-      const dropX = clickX - boardRect.left;
-      const dropY = clickY - boardRect.top;
-      const finalX = dropX - 100;
-      const finalY = dropY - 100;
+      const dropX = clientX - boardRect.left;
+      const dropY = clientY - boardRect.top;
+      const pinWidth = isMobile ? 100 : 180; // Match .pin-container sizes
+      const pinHeight = isMobile ? 100 : 180;
+      const finalX = dropX - pinWidth / 2;
+      const finalY = dropY - pinHeight / 2;
       setBoardPins((prev) => [
         ...prev,
         { ...selectedPin, position: { x: finalX, y: finalY } },
       ]);
-      // Play the pin placement sound
       new Audio(pinSound).play();
       const containerRect = containerRef.current.getBoundingClientRect();
-      const sparkleX = clickX - containerRect.left - 150;
-      const sparkleY = clickY - containerRect.top - 50;
+      const sparkleX = clientX - containerRect.left - (isMobile ? 50 : 100);
+      const sparkleY = clientY - containerRect.top - (isMobile ? 50 : 100);
       setSparklePosition({ x: sparkleX, y: sparkleY });
       setTimeout(() => setSparklePosition(null), 1000);
     } else {
-      // Dropped outside board => put pin back to sidebar
       setAvailablePins((prev) => [...prev, selectedPin]);
     }
     setSelectedPin(null);
@@ -166,13 +207,14 @@ function App() {
         className={`container ${selectedPin ? "dragging" : ""}`}
         ref={containerRef}
         onMouseUp={handleDrop}
+        onTouchEnd={handleDrop}
         style={{
           cursor: selectedPin
             ? `url(${mickeyHand}) 32 32, pointer`
             : "default",
         }}
       >
-        {/* Sidebar with rolling pin thumbnails */}
+        {/* Sidebar with rolling pin thumbnails (horizontal on mobile) */}
         <div className="pin-sidebar">
           <div
             className="pin-scroll"
@@ -183,8 +225,9 @@ function App() {
                 key={pin.alt}
                 className="pin-item"
                 onMouseDown={handlePickUp(pin, "sidebar")}
+                onTouchStart={handlePickUp(pin, "sidebar")}
               >
-                <img src={pin.src} alt={pin.alt} className="pin-thumb" />
+                <img src={pin.src} alt={pin.alt} className="pin-thumb" loading="lazy" />
               </div>
             ))}
           </div>
@@ -211,20 +254,21 @@ function App() {
 
         {/* Pin board */}
         <div className="pin-board" ref={boardRef}>
-          <img src={pinBoard} alt="Mickey Head Pin Board" className="board-image" />
+          <img src={pinBoard} alt="Mickey Head Pin Board" className="board-image" loading="lazy" />
           {boardPins.map((pin) => (
             <div
               key={pin.alt}
               className="pin-container"
               style={{ left: pin.position.x, top: pin.position.y }}
               onMouseDown={handlePickUp(pin, "board")}
+              onTouchStart={handlePickUp(pin, "board")}
             >
-              <img src={pin.src} alt={pin.alt} className="pin" />
+              <img src={pin.src} alt={pin.alt} className="pin" loading="lazy" />
             </div>
           ))}
           {selectedPin && (
             <div className="dragging-pin" style={{ left: pinPosition.x, top: pinPosition.y }}>
-              <img src={selectedPin.src} alt={selectedPin.alt} className="pin dragging" />
+              <img src={selectedPin.src} alt={selectedPin.alt} className="pin dragging" loading="lazy" />
             </div>
           )}
           {sparklePosition && (
