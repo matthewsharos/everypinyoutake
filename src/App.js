@@ -62,11 +62,11 @@ function App() {
       e.preventDefault();
       e.stopPropagation();
       
-      // Get the board's position
+      // Get board position
       const boardRect = boardRef.current.getBoundingClientRect();
       let clientX, clientY;
 
-      // Get touch/mouse coordinates
+      // Get exact touch/mouse coordinates
       if (e.type === "mousemove") {
         clientX = e.clientX;
         clientY = e.clientY;
@@ -75,10 +75,14 @@ function App() {
         clientY = e.touches[0].clientY;
       }
 
-      // Calculate position relative to the board
+      // Direct position calculation
+      const touchX = clientX - boardRect.left;
+      const touchY = clientY - boardRect.top;
+
+      // Set position directly
       setPinPosition({
-        x: clientX - boardRect.left,
-        y: clientY - boardRect.top
+        x: touchX,
+        y: touchY
       });
     }
 
@@ -96,37 +100,35 @@ function App() {
   const handleDrop = (e) => {
     if (!selectedPin) return;
     
-    // Current drag position (board-relative)
-    const dropX = pinPosition.x;
-    const dropY = pinPosition.y;
+    // Use the current pin position which tracks the finger exactly
     const boardRect = boardRef.current.getBoundingClientRect();
     
-    // Convert to screen coordinates for boundary check
-    const clientX = dropX + boardRect.left;
-    const clientY = dropY + boardRect.top;
+    // Check if the current position is within board boundaries
+    const absoluteX = pinPosition.x + boardRect.left;
+    const absoluteY = pinPosition.y + boardRect.top;
     
     if (
-      clientX >= boardRect.left &&
-      clientX <= boardRect.right &&
-      clientY >= boardRect.top &&
-      clientY <= boardRect.bottom
+      absoluteX >= boardRect.left &&
+      absoluteX <= boardRect.right &&
+      absoluteY >= boardRect.top &&
+      absoluteY <= boardRect.bottom
     ) {
-      // Add the pin to the board at the drop position
+      // Place pin exactly where it was being dragged
       setBoardPins((prev) => [
         ...prev,
-        { ...selectedPin, position: { x: dropX, y: dropY } },
+        { ...selectedPin, position: { x: pinPosition.x, y: pinPosition.y } },
       ]);
 
-      // Show sparkle at the drop position
+      // Show sparkle at same exact position
       new Audio(pinSound).play();
-      setSparklePosition({ x: dropX, y: dropY });
+      setSparklePosition({ x: pinPosition.x, y: pinPosition.y });
       setTimeout(() => setSparklePosition(null), 1000);
     } else {
-      // Return to sidebar if dropped outside
+      // Return to sidebar if dropped outside board area
       setAvailablePins((prev) => [...prev, selectedPin]);
     }
 
-    // Reset state
+    // Clean up
     setSelectedPin(null);
     setIsDragging(false);
     if (sidebarRef.current) {
@@ -229,16 +231,18 @@ function App() {
                   setSelectedPin(pin);
                   setIsDragging(true);
                   
-                  // Position relative to board - get accurate coordinates
+                  // Get touch position and board position
                   const boardRect = boardRef.current.getBoundingClientRect();
                   const touch = e.touches[0];
-                  const clientX = touch.clientX;
-                  const clientY = touch.clientY;
                   
-                  // Calculate position using board's coordinates
+                  // Calculate board-relative position
+                  const touchX = touch.clientX - boardRect.left;
+                  const touchY = touch.clientY - boardRect.top;
+                  
+                  // Set pin position directly
                   setPinPosition({
-                    x: clientX - boardRect.left,
-                    y: clientY - boardRect.top
+                    x: touchX,
+                    y: touchY
                   });
                   
                   if (sidebarRef.current) {
@@ -315,16 +319,18 @@ function App() {
                 setSelectedPin(pin);
                 setIsDragging(true);
                 
-                // Position relative to board - get accurate coordinates
+                // Get touch position and board position
                 const boardRect = boardRef.current.getBoundingClientRect();
                 const touch = e.touches[0];
-                const clientX = touch.clientX;
-                const clientY = touch.clientY;
                 
-                // Calculate position using board's coordinates
+                // Calculate board-relative position
+                const touchX = touch.clientX - boardRect.left;
+                const touchY = touch.clientY - boardRect.top;
+                
+                // Set pin position directly
                 setPinPosition({
-                  x: clientX - boardRect.left,
-                  y: clientY - boardRect.top
+                  x: touchX,
+                  y: touchY
                 });
                 
                 if (sidebarRef.current) {
