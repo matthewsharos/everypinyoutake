@@ -106,79 +106,31 @@ body {
   cursor: pointer;
 }
 
+/* Pin thumbnails in the sidebar */
 .pin-thumb {
-  width: 100px;
-  height: 100px;
-  object-fit: cover;
-  border: none;
-  border-radius: 5px;
-}
-
-/* Pause/Play button above the sidebar */
-.play-toggle {
-  position: absolute;
-  left: 20px;
-  top: 60px;
-  padding: 5px 10px;
-  background: #1e90ff;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  font-size: 1em;
-  cursor: pointer;
-}
-
-/* Reset button (now just "reset" with fireworks) */
-.reset-button {
-  position: absolute;
-  left: 100px;
-  top: 60px;
-  padding: 5px 10px;
-  background: linear-gradient(45deg, #ff69b4, #32cd32);
-  color: #fff;
-  border: none;
-  border-radius: 5px;
-  font-size: 1em;
-  cursor: pointer;
-  z-index: 10;
-  box-shadow: 0 0 5px rgba(255,215,0,0.6);
-  transition: transform 0.2s ease;
-}
-
-.reset-button:hover {
-  transform: scale(1.1);
-}
-
-/* Pin board (made larger) */
-.pin-board {
-  position: relative;
-  width: calc(100% - 200px);
-  margin: -10px auto 20px;
-  overflow: visible;
-}
-
-.board-image {
   width: 100%;
   height: auto;
-  object-fit: contain;
-  display: block;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  transition: transform 0.1s ease;
+  transform-origin: center;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
-/* Pins on the board */
-.pin-container {
-  position: absolute;
-  width: 180px;
-  height: 180px;
-  z-index: 101;
-  cursor: pointer;
-  transform: translate(-50%, -50%);
+.pin-thumb:hover {
+  transform: scale(1.05);
 }
 
+/* Board pins */
 .pin {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  background: transparent;
+  height: auto;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  pointer-events: none;
 }
 
 /* Dragging pin follows the mouse/touch */
@@ -189,11 +141,14 @@ body {
   z-index: 9999;
   transform: translate(-50%, -50%);
   will-change: transform, left, top;
+  opacity: 1;
+  transition: opacity 0.1s ease;
 }
 
 .dragging-pin .pin {
-  box-shadow: 0 0 15px rgba(255,215,0,0.8),
-    0 0 5px rgba(255,215,0,0.6);
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 0 5px rgba(255, 255, 0, 0.7));
 }
 
 /* Sparkle effect after dropping */
@@ -342,11 +297,18 @@ body {
     padding: 10px 0;
   }
 
+  .pin-item {
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
   .pin-container {
     width: 80px;
     height: 80px;
     touch-action: none;
     transform: translate(-50%, -50%);
+    z-index: 101;
+    -webkit-tap-highlight-color: transparent;
   }
 
   .dragging-pin {
@@ -355,6 +317,7 @@ body {
     touch-action: none;
     transform: translate(-50%, -50%);
     z-index: 9999;
+    opacity: 1;
   }
 
   .sparkle {

@@ -55,7 +55,7 @@ function App() {
     localStorage.setItem("availablePins", JSON.stringify(availablePins));
   }, [availablePins]);
 
-  // Update pin position while dragging (supporting both mouse and touch, adjusting offset dynamically)
+  // Update pin position while dragging
   useEffect(() => {
     function handleMove(e) {
       if (!selectedPin) return;
@@ -79,68 +79,104 @@ function App() {
       });
     }
 
-    function handleStart(e) {
+    // Direct touch/click handler for pins in sidebar and board
+    function handlePinInteraction(e) {
+      // Skip if already dragging a pin
       if (selectedPin) return;
       
+      // Find the pin element that was touched/clicked
       let target = e.target;
-      // Find closest pin-item or pin-container
-      while (target && !target.classList.contains('pin-item') && !target.classList.contains('pin-container')) {
+      let pinElement = null;
+      let origin = null;
+      
+      // Walk up the DOM to find the pin container or item
+      while (target && !pinElement) {
+        if (target.classList.contains('pin-item')) {
+          pinElement = target;
+          origin = 'sidebar';
+          break;
+        } else if (target.classList.contains('pin-container')) {
+          pinElement = target;
+          origin = 'board';
+          break;
+        }
         target = target.parentElement;
       }
       
-      if (!target) return;
+      // Return if no pin was found
+      if (!pinElement) return;
 
+      // Prevent default behaviors
       e.preventDefault();
       e.stopPropagation();
-
-      let pin;
-      const origin = target.classList.contains('pin-item') ? 'sidebar' : 'board';
       
+      // Find the pin data
+      let pin;
       if (origin === 'sidebar') {
-        const pinAlt = target.querySelector('img').alt;
+        const pinImg = pinElement.querySelector('img');
+        if (!pinImg) return;
+        
+        const pinAlt = pinImg.alt;
         pin = availablePins.find(p => p.alt === pinAlt);
-        setAvailablePins((prev) => prev.filter((p) => p.alt !== pinAlt));
+        if (!pin) return;
+        
+        // Remove from sidebar
+        setAvailablePins(prev => prev.filter(p => p.alt !== pinAlt));
       } else {
-        const pinAlt = target.querySelector('img').alt;
+        const pinImg = pinElement.querySelector('img');
+        if (!pinImg) return;
+        
+        const pinAlt = pinImg.alt;
         pin = boardPins.find(p => p.alt === pinAlt);
-        setBoardPins((prev) => prev.filter((p) => p.alt !== pinAlt));
+        if (!pin) return;
+        
+        // Remove from board
+        setBoardPins(prev => prev.filter(p => p.alt !== pinAlt));
       }
-
-      if (!pin) return;
-
+      
+      // Get touch/mouse position
       let clientX, clientY;
-      if (e.type === "touchstart") {
+      if (e.type.startsWith('touch')) {
         clientX = e.touches[0].clientX;
         clientY = e.touches[0].clientY;
       } else {
         clientX = e.clientX;
         clientY = e.clientY;
       }
-
+      
+      // Set up dragging state
       setSelectedPin(pin);
       setIsDragging(true);
-      if (sidebarRef.current) {
-        sidebarRef.current.style.touchAction = "none";
-      }
-
+      
+      // Position pin relative to board
       const boardRect = boardRef.current.getBoundingClientRect();
       setPinPosition({
         x: clientX - boardRect.left,
         y: clientY - boardRect.top
       });
+      
+      // Disable sidebar scrolling while dragging
+      if (sidebarRef.current) {
+        sidebarRef.current.style.touchAction = 'none';
+      }
     }
 
+    // Attach touch handlers directly to container
     const container = containerRef.current;
-    container.addEventListener("mousemove", handleMove, { passive: false });
-    container.addEventListener("touchmove", handleMove, { passive: false });
-    container.addEventListener("mousedown", handleStart, { passive: false });
-    container.addEventListener("touchstart", handleStart, { passive: false });
+    
+    // Mouse/touch move for dragging
+    container.addEventListener('mousemove', handleMove, { passive: false });
+    container.addEventListener('touchmove', handleMove, { passive: false });
+    
+    // Touch event for initial interaction
+    container.addEventListener('mousedown', handlePinInteraction, { passive: false });
+    container.addEventListener('touchstart', handlePinInteraction, { passive: false });
 
     return () => {
-      container.removeEventListener("mousemove", handleMove);
-      container.removeEventListener("touchmove", handleMove);
-      container.removeEventListener("mousedown", handleStart);
-      container.removeEventListener("touchstart", handleStart);
+      container.removeEventListener('mousemove', handleMove);
+      container.removeEventListener('touchmove', handleMove);
+      container.removeEventListener('mousedown', handlePinInteraction);
+      container.removeEventListener('touchstart', handlePinInteraction);
     };
   }, [selectedPin, availablePins, boardPins]);
 
