@@ -62,9 +62,11 @@ function App() {
       e.preventDefault();
       e.stopPropagation();
       
+      // Get the board's position
       const boardRect = boardRef.current.getBoundingClientRect();
       let clientX, clientY;
 
+      // Get touch/mouse coordinates
       if (e.type === "mousemove") {
         clientX = e.clientX;
         clientY = e.clientY;
@@ -73,6 +75,7 @@ function App() {
         clientY = e.touches[0].clientY;
       }
 
+      // Calculate position relative to the board
       setPinPosition({
         x: clientX - boardRect.left,
         y: clientY - boardRect.top
@@ -90,16 +93,26 @@ function App() {
     };
   }, [selectedPin]);
 
+  // Function to properly position elements on the page
+  const getFixedPosition = (boardX, boardY) => {
+    if (!boardRef.current) return { x: 0, y: 0 };
+    
+    const boardRect = boardRef.current.getBoundingClientRect();
+    return {
+      x: boardX + boardRect.left,
+      y: boardY + boardRect.top
+    };
+  };
+  
   const handleDrop = (e) => {
     if (!selectedPin) return;
     
-    // Use the current pinPosition for the drop - this is already board-relative
-    // and represents exactly where the user's finger is
+    // Current drag position (board-relative)
     const dropX = pinPosition.x;
     const dropY = pinPosition.y;
     const boardRect = boardRef.current.getBoundingClientRect();
     
-    // Check if the drop position is within the board boundaries
+    // Convert to screen coordinates for boundary check
     const clientX = dropX + boardRect.left;
     const clientY = dropY + boardRect.top;
     
@@ -109,22 +122,22 @@ function App() {
       clientY >= boardRect.top &&
       clientY <= boardRect.bottom
     ) {
-      // Add the pin to the board at the exact finger position
+      // Add the pin to the board at the drop position
       setBoardPins((prev) => [
         ...prev,
         { ...selectedPin, position: { x: dropX, y: dropY } },
       ]);
 
-      // Show sparkle effect at the exact drop position
+      // Show sparkle at the drop position
       new Audio(pinSound).play();
       setSparklePosition({ x: dropX, y: dropY });
       setTimeout(() => setSparklePosition(null), 1000);
     } else {
-      // Return the pin to the sidebar if dropped outside the board
+      // Return to sidebar if dropped outside
       setAvailablePins((prev) => [...prev, selectedPin]);
     }
 
-    // Reset dragging state
+    // Reset state
     setSelectedPin(null);
     setIsDragging(false);
     if (sidebarRef.current) {
@@ -227,15 +240,21 @@ function App() {
                   setSelectedPin(pin);
                   setIsDragging(true);
                   
-                  // Position relative to board
+                  // Position relative to board - get accurate coordinates
                   const boardRect = boardRef.current.getBoundingClientRect();
-                  const clientX = e.touches[0].clientX;
-                  const clientY = e.touches[0].clientY;
+                  const touch = e.touches[0];
+                  const clientX = touch.clientX;
+                  const clientY = touch.clientY;
                   
+                  // Calculate position using board's coordinates
                   setPinPosition({
                     x: clientX - boardRect.left,
                     y: clientY - boardRect.top
                   });
+                  
+                  if (sidebarRef.current) {
+                    sidebarRef.current.style.touchAction = 'none';
+                  }
                 }}
               >
                 <img src={pin.src} alt={pin.alt} className="pin-thumb" loading="lazy" />
@@ -307,15 +326,21 @@ function App() {
                 setSelectedPin(pin);
                 setIsDragging(true);
                 
-                // Position relative to board
+                // Position relative to board - get accurate coordinates
                 const boardRect = boardRef.current.getBoundingClientRect();
-                const clientX = e.touches[0].clientX;
-                const clientY = e.touches[0].clientY;
+                const touch = e.touches[0];
+                const clientX = touch.clientX;
+                const clientY = touch.clientY;
                 
+                // Calculate position using board's coordinates
                 setPinPosition({
                   x: clientX - boardRect.left,
                   y: clientY - boardRect.top
                 });
+                
+                if (sidebarRef.current) {
+                  sidebarRef.current.style.touchAction = 'none';
+                }
               }}
             >
               <img src={pin.src} alt={pin.alt} className="pin" loading="lazy" />
@@ -324,14 +349,14 @@ function App() {
         </div>
       </div>
 
-      {/* Render dragging pin and sparkle outside any other containers */}
-      {selectedPin && (
+      {/* Render dragging pin at fixed position */}
+      {selectedPin && boardRef.current && (
         <div 
           className="dragging-pin"
           style={{ 
             position: "fixed",
-            left: pinPosition.x + boardRef.current?.getBoundingClientRect().left,
-            top: pinPosition.y + boardRef.current?.getBoundingClientRect().top,
+            left: pinPosition.x + boardRef.current.getBoundingClientRect().left,
+            top: pinPosition.y + boardRef.current.getBoundingClientRect().top,
             zIndex: 9999,
             touchAction: "none",
             pointerEvents: "none",
@@ -341,13 +366,14 @@ function App() {
         </div>
       )}
       
-      {sparklePosition && (
+      {/* Render sparkle at fixed position */}
+      {sparklePosition && boardRef.current && (
         <div 
           className="sparkle" 
           style={{ 
             position: "fixed",
-            left: sparklePosition.x + boardRef.current?.getBoundingClientRect().left,
-            top: sparklePosition.y + boardRef.current?.getBoundingClientRect().top,
+            left: sparklePosition.x + boardRef.current.getBoundingClientRect().left,
+            top: sparklePosition.y + boardRef.current.getBoundingClientRect().top,
             zIndex: 9998,
             pointerEvents: "none"
           }} 
