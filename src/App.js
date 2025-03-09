@@ -228,8 +228,6 @@ function App() {
         ref={containerRef}
         onMouseUp={handleDrop}
         onTouchEnd={handleDrop}
-        onTouchStart={(e) => e.preventDefault()} // Prevent touch scrolling on container
-        onTouchMove={(e) => e.preventDefault()} // Prevent touch scrolling on container
         style={{
           cursor: selectedPin
             ? `url(${mickeyHand}) 32 32, pointer`
@@ -251,7 +249,7 @@ function App() {
                 className="pin-item"
                 onMouseDown={handlePickUp(pin, "sidebar")}
                 onTouchStart={handlePickUp(pin, "sidebar")}
-                onTouchMove={(e) => e.preventDefault()} // Prevent touch scrolling on pin items
+                style={{ touchAction: "none" }}
               >
                 <img src={pin.src} alt={pin.alt} className="pin-thumb" loading="lazy" />
               </div>
@@ -285,10 +283,13 @@ function App() {
             <div
               key={pin.alt}
               className="pin-container"
-              style={{ left: pin.position.x, top: pin.position.y }}
               onMouseDown={handlePickUp(pin, "board")}
               onTouchStart={handlePickUp(pin, "board")}
-              onTouchMove={(e) => e.preventDefault()} // Prevent touch scrolling on pins
+              style={{ 
+                left: pin.position.x, 
+                top: pin.position.y,
+                touchAction: "none"
+              }}
             >
               <img src={pin.src} alt={pin.alt} className="pin" loading="lazy" />
             </div>
