@@ -2,8 +2,12 @@
 body {
   margin: 0;
   padding: 0;
-  background: url("data:image/svg+xml,%3Csvg width='800' height='600' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3ClinearGradient id='bggrad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%230038e0;stop-opacity:1'/%3E%3Cstop offset='100%25' style='stop-color:%237a24c2;stop-opacity:1'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='800' height='600' fill='url(%23bggrad)'/%3E%3Cg id='castle'%3E%3Cpolygon points='400,200 390,250 410,250' fill='%236FA8DC'/%3E%3Cpolygon points='390,250 380,290 420,290 410,250' fill='%2393C47D'/%3E%3Cpolygon points='380,290 370,330 430,330 420,290' fill='%23CFE2F3'/%3E%3Cpolygon points='370,330 360,380 440,380 430,330' fill='%23FFE599'/%3E%3Cpolygon points='395,180 405,180 400,200' fill='%23B4A7D6'/%3E%3C/g%3E%3Cg id='tinkerbell'%3E%3Cpolygon points='410,160 412,165 415,160 413,170 410,175 407,170 405,160' fill='%23FFD700' opacity='0.9'/%3E%3C/g%3E%3Cg id='teacups'%3E%3Cellipse cx='200' cy='500' rx='40' ry='20' fill='%23ff9ef9'/%3E%3Cellipse cx='280' cy='500' rx='40' ry='20' fill='%23ffdf6b'/%3E%3C/g%3E%3Cpolygon points='100,100 103,108 110,110 103,112 100,120 97,112 90,110 97,108' fill='%23fff' opacity='0.8'/%3E%3Cpolygon points='700,50 703,58 710,60 703,62 700,70 697,62 690,60 697,58' fill='%23fff' opacity='0.8'/%3E%3C/svg%3E") no-repeat center center fixed;
+  background: url("data:image/svg+xml,%3Csvg width='800' height='600' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3ClinearGradient id='bggrad' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' style='stop-color:%230038e0;stop-opacity:1'/%3E%3Cstop offset='100%25' style='stop-color:%237a24c2;stop-opacity:1'/%3E%3C/defs%3E%3Crect width='800' height='600' fill='url(%23bggrad)'/%3E%3Cg id='castle'%3E%3Cpolygon points='400,200 390,250 410,250' fill='%236FA8DC'/%3E%3Cpolygon points='390,250 380,290 420,290 410,250' fill='%2393C47D'/%3E%3Cpolygon points='380,290 370,330 430,330 420,290' fill='%23CFE2F3'/%3E%3Cpolygon points='370,330 360,380 440,380 430,330' fill='%23FFE599'/%3E%3Cpolygon points='395,180 405,180 400,200' fill='%23B4A7D6'/%3E%3C/g%3E%3Cg id='tinkerbell'%3E%3Cpolygon points='410,160 412,165 415,160 413,170 410,175 407,170 405,160' fill='%23FFD700' opacity='0.9'/%3E%3C/g%3E%3Cg id='teacups'%3E%3Cellipse cx='200' cy='500' rx='40' ry='20' fill='%23ff9ef9'/%3E%3Cellipse cx='280' cy='500' rx='40' ry='20' fill='%23ffdf6b'/%3E%3C/g%3E%3Cpolygon points='100,100 103,108 110,110 103,112 100,120 97,112 90,110 97,108' fill='%23fff' opacity='0.8'/%3E%3Cpolygon points='700,50 703,58 710,60 703,62 700,70 697,62 690,60 697,58' fill='%23fff' opacity='0.8'/%3E%3C/svg%3E") no-repeat center center fixed;
   background-size: cover;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 .App {
@@ -11,6 +15,10 @@ body {
   font-family: Arial, sans-serif;
   min-height: 100vh;
   padding: 0;
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
 }
 
 /* Page header with Walt Disney–inspired title (white) */
@@ -278,63 +286,105 @@ body {
 }
 
 @media (max-width: 767px) {
-  .pin-sidebar {
-    position: static;
-    width: 95%;
-    height: 120px; /* Reduced height for horizontal layout */
-    margin: 50px auto 20px;
-    top: auto;
-    left: auto;
-    overflow-x: auto; /* Enable horizontal scrolling */
-    overflow-y: hidden; /* Prevent vertical overflow */
+  .page-header {
+    padding: 5px 0;
+    margin-bottom: 5px;
   }
-  .pin-scroll {
-    flex-direction: row; /* Horizontal layout for pins */
-    animation: scrollPinsHorizontal 20s linear infinite; /* New horizontal animation */
-  }
-  @keyframes scrollPinsHorizontal {
-    0% {
-      transform: translateX(0);
-    }
-    100% {
-      transform: translateX(-100%);
-    }
-  }
-  .play-toggle,
-  .reset-button {
-    position: static;
-    margin: 10px 5px;
-    padding: 10px 20px; /* Increase touch target size for mobile */
-  }
-  .pin-board {
-    width: 100%; /* Increased width to take up more space, reducing side margins */
-    margin: 0 auto; /* Center with minimal margins */
-    min-height: unset; /* Remove min-height to scale naturally */
-  }
+
   .page-title {
-    font-size: 2em;
+    font-size: 1.5em;
+    margin: 0;
   }
-  .fireworks {
+
+  .board-count {
+    margin: 2px 0;
+    font-size: 0.9em;
+  }
+
+  .instagram-link {
+    top: 10px;
+    right: 10px;
+  }
+
+  .pin-sidebar {
     position: fixed;
+    bottom: 10px;
     left: 50%;
-    top: 50px;
     transform: translateX(-50%);
+    width: 90%;
+    height: 80px;
+    margin: 0;
+    z-index: 100;
   }
+
+  .pin-scroll {
+    flex-direction: row;
+    animation: scrollPinsHorizontal 20s linear infinite;
+  }
+
+  .pin-thumb {
+    width: 50px;
+    height: 50px;
+  }
+
+  .pin-board {
+    width: 96%;
+    height: calc(100vh - 180px);
+    margin: 10px auto;
+    overflow: hidden;
+  }
+
+  .board-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
   .pin-container {
+    width: 80px;
+    height: 80px;
+  }
+
+  .dragging-pin {
     width: 100px;
     height: 100px;
   }
-  .dragging-pin {
-    width: 120px;
-    height: 120px;
+
+  .play-toggle,
+  .reset-button {
+    position: fixed;
+    top: auto;
+    bottom: 95px;
+    transform: translateX(-50%);
+    padding: 5px 10px;
+    z-index: 101;
   }
-  .pin-thumb {
-    width: 80px; /* Smaller pins for horizontal layout */
-    height: 80px;
+
+  .play-toggle {
+    left: calc(50% - 50px);
   }
-  /* Ensure touch events don’t get blocked */
-  .container.dragging {
-    touch-action: none; /* Prevents default touch behaviors like scrolling */
+
+  .reset-button {
+    left: calc(50% + 50px);
+  }
+
+  .page-footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    padding: 2px;
+    font-size: 0.7em;
+    background: rgba(0, 0, 0, 0.3);
+    margin: 0;
+  }
+
+  /* Ensure touch events don't cause scrolling */
+  .container {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    touch-action: none;
   }
 }
 
