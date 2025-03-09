@@ -99,49 +99,38 @@ function App() {
     const isMobile = window.innerWidth <= 767;
     const pinSize = isMobile ? 80 : 180; // Base pin size
 
-    if (isMobile && e.type === "touchstart") {
-      if (sidebarRef.current) {
-        sidebarRef.current.style.touchAction = "none";
-      }
-      if (origin === "sidebar") {
-        setAvailablePins((prev) => prev.filter((p) => p.alt !== pin.alt));
-      } else if (origin === "board") {
-        setBoardPins((prev) => prev.filter((p) => p.alt !== pin.alt));
-      }
-      setSelectedPin(pin);
-      setIsDragging(true);
-
-      const containerRect = containerRef.current.getBoundingClientRect();
-      const touch = e.touches[0];
-      const touchX = touch.clientX - containerRect.left;
-      const touchY = touch.clientY - containerRect.top;
-
-      // Center the pin on the touch point
-      setPinPosition({
-        x: touchX - (pinSize / 2),
-        y: touchY - (pinSize / 2),
-      });
-      return;
+    // Handle both touch and mouse events
+    let clientX, clientY;
+    if (e.type === "touchstart") {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
     }
 
-    // Handle desktop/mouse events
-    if (selectedPin) return;
+    // Remove pin from its current location
     if (origin === "sidebar") {
       setAvailablePins((prev) => prev.filter((p) => p.alt !== pin.alt));
     } else if (origin === "board") {
       setBoardPins((prev) => prev.filter((p) => p.alt !== pin.alt));
     }
+
+    // Set up dragging state
     setSelectedPin(pin);
     setIsDragging(true);
+    if (sidebarRef.current) {
+      sidebarRef.current.style.touchAction = "none";
+    }
 
+    // Position pin at touch/click point
     const containerRect = containerRef.current.getBoundingClientRect();
-    const mouseX = e.clientX - containerRect.left;
-    const mouseY = e.clientY - containerRect.top;
+    const pointX = clientX - containerRect.left;
+    const pointY = clientY - containerRect.top;
 
-    // Center the pin on the mouse point
     setPinPosition({
-      x: mouseX - (pinSize / 2),
-      y: mouseY - (pinSize / 2),
+      x: pointX - (pinSize / 2),
+      y: pointY - (pinSize / 2),
     });
   };
 
