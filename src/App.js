@@ -66,6 +66,7 @@ function App() {
         clientX = e.clientX;
         clientY = e.clientY;
       } else if (e.type === "touchmove") {
+        e.preventDefault(); // Prevent scrolling while dragging
         clientX = e.touches[0].clientX;
         clientY = e.touches[0].clientY;
       }
@@ -73,35 +74,34 @@ function App() {
       const mouseX = clientX - containerRect.left;
       const mouseY = clientY - containerRect.top;
       const isMobile = window.innerWidth <= 767;
-      const pinWidth = isMobile ? 120 : 200; // Match .dragging-pin CSS
-      const pinHeight = isMobile ? 120 : 200;
-
-      // Adjust offsets for better alignment
+      const pinSize = isMobile ? 80 : 180; // Base pin size
+      
+      // Center the pin on the touch/mouse point
       setPinPosition({
-        x: mouseX - pinWidth / 2 - (isMobile ? 20 : 40), // Shift left by 20px (mobile) or 40px (desktop)
-        y: mouseY - pinHeight / 2 - (isMobile ? 200 : 0), // Shift up by 200px on mobile, no shift on desktop
+        x: mouseX - (pinSize / 2),
+        y: mouseY - (pinSize / 2),
       });
     }
 
     const container = containerRef.current;
     container.addEventListener("mousemove", handleMove);
-    container.addEventListener("touchmove", handleMove, { passive: false }); // Prevent default touch scrolling
+    container.addEventListener("touchmove", handleMove, { passive: false });
     return () => {
       container.removeEventListener("mousemove", handleMove);
       container.removeEventListener("touchmove", handleMove);
     };
   }, [selectedPin]);
 
-  // Pick up a pin from sidebar or board (supporting both mouse and touch, with improved touch handling)
+  // Pick up a pin from sidebar or board
   const handlePickUp = (pin, origin) => (e) => {
     e.stopPropagation();
     e.preventDefault();
     const isMobile = window.innerWidth <= 767;
+    const pinSize = isMobile ? 80 : 180; // Base pin size
 
-    // Immediately handle touch events on mobile
     if (isMobile && e.type === "touchstart") {
       if (sidebarRef.current) {
-        sidebarRef.current.style.touchAction = "none"; // Disable sidebar touch scrolling
+        sidebarRef.current.style.touchAction = "none";
       }
       if (origin === "sidebar") {
         setAvailablePins((prev) => prev.filter((p) => p.alt !== pin.alt));
@@ -109,19 +109,17 @@ function App() {
         setBoardPins((prev) => prev.filter((p) => p.alt !== pin.alt));
       }
       setSelectedPin(pin);
-      setIsDragging(true); // Set dragging state to pause sidebar
-      const containerRect = containerRef.current.getBoundingClientRect();
-      const clientX = e.touches[0].clientX;
-      const clientY = e.touches[0].clientY;
-      const mouseX = clientX - containerRect.left;
-      const mouseY = clientY - containerRect.top;
-      const pinWidth = 120; // Mobile pin size
-      const pinHeight = 120;
+      setIsDragging(true);
 
-      // Adjust offsets for better alignment on mobile
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const touch = e.touches[0];
+      const touchX = touch.clientX - containerRect.left;
+      const touchY = touch.clientY - containerRect.top;
+
+      // Center the pin on the touch point
       setPinPosition({
-        x: mouseX - pinWidth / 2 - 20, // Shift left by 20px
-        y: mouseY - pinHeight / 2 - 200, // Shift up by 200px
+        x: touchX - (pinSize / 2),
+        y: touchY - (pinSize / 2),
       });
       return;
     }
@@ -135,23 +133,24 @@ function App() {
     }
     setSelectedPin(pin);
     setIsDragging(true);
+
     const containerRect = containerRef.current.getBoundingClientRect();
     const mouseX = e.clientX - containerRect.left;
     const mouseY = e.clientY - containerRect.top;
-    const pinWidth = isMobile ? 120 : 200;
-    const pinHeight = isMobile ? 120 : 200;
 
+    // Center the pin on the mouse point
     setPinPosition({
-      x: mouseX - pinWidth / 2 - (isMobile ? 20 : 40),
-      y: mouseY - pinHeight / 2 - (isMobile ? 200 : 0),
+      x: mouseX - (pinSize / 2),
+      y: mouseY - (pinSize / 2),
     });
   };
 
-  // Drop the selected pin on board (if within bounds) or back to sidebar (supporting both mouse and touch, with improved touch handling)
+  // Drop the selected pin
   const handleDrop = (e) => {
     if (!selectedPin) return;
     let clientX, clientY;
     const isMobile = window.innerWidth <= 767;
+    const pinSize = isMobile ? 80 : 180; // Base pin size
 
     if (e.type === "mouseup") {
       clientX = e.clientX;
@@ -162,31 +161,37 @@ function App() {
     }
 
     const boardRect = boardRef.current.getBoundingClientRect();
+    const containerRect = containerRef.current.getBoundingClientRect();
+
     if (
       clientX >= boardRect.left &&
       clientX <= boardRect.right &&
       clientY >= boardRect.top &&
       clientY <= boardRect.bottom
     ) {
-      const containerRect = containerRef.current.getBoundingClientRect();
-      const dropX = clientX - boardRect.left - (isMobile ? 25 : 80); // Shift left by 20px on desktop, 30px on mobile
-      const dropY = clientY - boardRect.top - (isMobile ? 40 : 100); // Shift up by 50px on mobile, 100px on desktop to align closer to mouse
+      // Calculate drop position relative to the board
+      const dropX = clientX - boardRect.left - (pinSize / 2);
+      const dropY = clientY - boardRect.top - (pinSize / 2);
+
       setBoardPins((prev) => [
         ...prev,
-        { ...selectedPin, position: { x: dropX, y: dropY } }, // Drop pin exactly where the mouse/finger is, adjusted upward and left on desktop
+        { ...selectedPin, position: { x: dropX, y: dropY } },
       ]);
+
+      // Play sound and show sparkle effect
       new Audio(pinSound).play();
-      const sparkleX = clientX - containerRect.left - (isMobile ? 40 : 150); // Align sparkle with pin center, shifted left
-      const sparkleY = clientY - containerRect.top - (isMobile ? 260 : 40); // Align sparkle with pin center, shifted up on mobile
+      const sparkleX = clientX - containerRect.left - (pinSize / 2);
+      const sparkleY = clientY - containerRect.top - (pinSize / 2);
       setSparklePosition({ x: sparkleX, y: sparkleY });
       setTimeout(() => setSparklePosition(null), 1000);
     } else {
       setAvailablePins((prev) => [...prev, selectedPin]);
     }
+
     setSelectedPin(null);
-    setIsDragging(false); // Reset dragging state to resume sidebar
+    setIsDragging(false);
     if (sidebarRef.current) {
-      sidebarRef.current.style.touchAction = "auto"; // Re-enable sidebar touch scrolling
+      sidebarRef.current.style.touchAction = "auto";
     }
     setPinPosition({ x: 0, y: 0 });
   };

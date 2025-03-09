@@ -169,6 +169,7 @@ body {
   height: 180px;
   z-index: 3;
   cursor: pointer;
+  transform: translate(0, 0);
 }
 
 .pin {
@@ -181,10 +182,11 @@ body {
 /* Dragging pin follows the mouse/touch */
 .dragging-pin {
   position: absolute;
-  width: 200px;
-  height: 200px;
+  width: 180px;
+  height: 180px;
   pointer-events: none;
   z-index: 4;
+  transform: translate(0, 0);
 }
 
 .dragging-pin .pin {
@@ -194,13 +196,14 @@ body {
 
 /* Sparkle effect after dropping */
 .sparkle {
-  width: 100px;
-  height: 100px;
   position: absolute;
+  width: 180px;
+  height: 180px;
   background: radial-gradient(circle, #ffff00 0%, transparent 70%);
   opacity: 0.8;
   animation: sparkleAnimation 1s ease-out forwards;
   z-index: 5;
+  transform: translate(0, 0);
 }
 
 @keyframes sparkleAnimation {
@@ -322,32 +325,24 @@ body {
     animation: scrollPinsHorizontal 20s linear infinite;
   }
 
-  .pin-thumb {
-    width: 50px;
-    height: 50px;
-  }
-
-  .pin-board {
-    width: 96%;
-    height: calc(100vh - 180px);
-    margin: 10px auto;
-    overflow: hidden;
-  }
-
-  .board-image {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-  }
-
   .pin-container {
     width: 80px;
     height: 80px;
   }
 
   .dragging-pin {
-    width: 100px;
-    height: 100px;
+    width: 80px;
+    height: 80px;
+  }
+
+  .sparkle {
+    width: 80px;
+    height: 80px;
+  }
+
+  .pin-thumb {
+    width: 50px;
+    height: 50px;
   }
 
   .play-toggle,
