@@ -165,6 +165,8 @@ body {
   width: 100%;
   height: auto;
   filter: drop-shadow(0 0 5px rgba(255, 255, 0, 0.7));
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* Sparkle effect */
@@ -177,6 +179,7 @@ body {
   z-index: 9998;
   transform: translate(-50%, -50%);
   will-change: transform, opacity;
+  pointer-events: none;
 }
 
 @keyframes sparkleAnimation {

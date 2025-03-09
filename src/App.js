@@ -76,13 +76,13 @@ function App() {
       }
 
       // Direct position calculation
-      const touchX = clientX - boardRect.left;
-      const touchY = clientY - boardRect.top;
+      const posX = clientX - boardRect.left;
+      const posY = clientY - boardRect.top;
 
       // Set position directly
       setPinPosition({
-        x: touchX,
-        y: touchY
+        x: posX,
+        y: posY
       });
     }
 
@@ -210,15 +210,22 @@ function App() {
                   setSelectedPin(pin);
                   setIsDragging(true);
                   
-                  // Position relative to board
+                  // Get mouse position and board position
                   const boardRect = boardRef.current.getBoundingClientRect();
-                  const clientX = e.clientX;
-                  const clientY = e.clientY;
                   
+                  // Calculate board-relative position
+                  const posX = e.clientX - boardRect.left;
+                  const posY = e.clientY - boardRect.top;
+                  
+                  // Set pin position directly
                   setPinPosition({
-                    x: clientX - boardRect.left,
-                    y: clientY - boardRect.top
+                    x: posX,
+                    y: posY
                   });
+                  
+                  if (sidebarRef.current) {
+                    sidebarRef.current.style.touchAction = 'none';
+                  }
                 }}
                 onTouchStart={(e) => {
                   e.preventDefault();
@@ -298,15 +305,22 @@ function App() {
                 setSelectedPin(pin);
                 setIsDragging(true);
                 
-                // Position relative to board
+                // Get mouse position and board position
                 const boardRect = boardRef.current.getBoundingClientRect();
-                const clientX = e.clientX;
-                const clientY = e.clientY;
                 
+                // Calculate board-relative position
+                const posX = e.clientX - boardRect.left;
+                const posY = e.clientY - boardRect.top;
+                
+                // Set pin position directly
                 setPinPosition({
-                  x: clientX - boardRect.left,
-                  y: clientY - boardRect.top
+                  x: posX,
+                  y: posY
                 });
+                
+                if (sidebarRef.current) {
+                  sidebarRef.current.style.touchAction = 'none';
+                }
               }}
               onTouchStart={(e) => {
                 e.preventDefault();
@@ -355,6 +369,7 @@ function App() {
             zIndex: 9999,
             touchAction: "none",
             pointerEvents: "none",
+            transform: "translate(-50%, -50%)"
           }}
         >
           <img src={selectedPin.src} alt={selectedPin.alt} className="pin dragging" loading="lazy" />
@@ -370,7 +385,8 @@ function App() {
             left: sparklePosition.x + boardRef.current.getBoundingClientRect().left,
             top: sparklePosition.y + boardRef.current.getBoundingClientRect().top,
             zIndex: 9998,
-            pointerEvents: "none"
+            pointerEvents: "none",
+            transform: "translate(-50%, -50%)"
           }} 
         />
       )}
