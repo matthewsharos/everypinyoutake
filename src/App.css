@@ -79,7 +79,7 @@ body {
   position: absolute;
   left: 20px;
   top: 100px;
-  z-index: 2;
+  z-index: 100;
 }
 
 /* Animated scrolling container for pins */
@@ -167,7 +167,7 @@ body {
   position: absolute;
   width: 180px;
   height: 180px;
-  z-index: 3;
+  z-index: 101;
   cursor: pointer;
   transform: translate(-50%, -50%);
 }
@@ -185,7 +185,7 @@ body {
   width: 180px;
   height: 180px;
   pointer-events: none;
-  z-index: 4;
+  z-index: 1000;
   transform: translate(-50%, -50%);
 }
 
@@ -202,7 +202,7 @@ body {
   background: radial-gradient(circle, #ffff00 0%, transparent 70%);
   opacity: 0.8;
   animation: sparkleAnimation 1s ease-out forwards;
-  z-index: 5;
+  z-index: 999;
   transform: translate(-50%, -50%);
 }
 
@@ -325,7 +325,7 @@ body {
 
   .pin-sidebar {
     position: fixed;
-    top: 60px; /* Position near top */
+    top: 60px;
     left: 50%;
     transform: translateX(-50%);
     width: 90%;
@@ -369,10 +369,10 @@ body {
   .play-toggle,
   .reset-button {
     position: fixed;
-    top: 150px; /* Position below sidebar */
+    top: 150px;
     transform: translateX(-50%);
     padding: 5px 10px;
-    z-index: 101;
+    z-index: 99;
   }
 
   .play-toggle {
