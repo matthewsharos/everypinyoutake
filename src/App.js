@@ -3,6 +3,7 @@ import "./App.css";
 import pinBoard from "./images/pin-board.png";
 import mickeyHand from "./images/mickey-hand.png";
 import pinSound from "./sounds/pin-sound.mp3";
+import instagramIcon from "./images/instagram.png";
 
 // Dynamically import all images from src/pins/ with lazy loading
 function importAll(r) {
@@ -25,7 +26,7 @@ function App() {
   const [selectedPin, setSelectedPin] = useState(null); // Pin currently being dragged
   const [pinPosition, setPinPosition] = useState({ x: 0, y: 0 }); // Drag position
   const [sparklePosition, setSparklePosition] = useState(null);
-  const [isPlaying, setIsPlaying] = useState(true); // Controls sidebar scrolling
+  const [isAutoScroll, setIsAutoScroll] = useState(true); // Controls sidebar scrolling
   const [showFireworks, setShowFireworks] = useState(false); // Controls fireworks animation
   const [isDragging, setIsDragging] = useState(false); // Track dragging state for sidebar control
 
@@ -207,21 +208,12 @@ function App() {
         <h1 className="page-title">Every Pin You Take</h1>
         <div className="board-count">Pins on Board: {boardPins.length}</div>
         <a
-          className="instagram-link"
-          href="https://instagram.com/everypinyoutake"
+          href="https://www.instagram.com/everypinyoutake/"
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="Every Pin You Take on Instagram"
+          className="instagram-link"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="32"
-            height="32"
-            fill="#E1306C"
-            viewBox="0 0 24 24"
-          >
-            <path d="M7.75 2h8.5A5.76 5.76 0 0122 7.75v8.5A5.76 5.76 0 0116.25 22h-8.5A5.76 5.76 0 012 16.25v-8.5A5.76 5.76 0 017.75 2zm0 2A3.75 3.75 0 004 7.75v8.5A3.75 3.75 0 007.75 20h8.5A3.75 3.75 0 0020 16.25v-8.5A3.75 3.75 0 0016.25 4h-8.5zM12 7a5 5 0 110 10 5 5 0 010-10zm0 2a3 3 0 100 6 3 3 0 000-6zm4.75-3a1.25 1.25 0 110 2.5 1.25 1.25 0 010-2.5z" />
-          </svg>
+          <img src={instagramIcon} alt="Instagram" />
         </a>
       </header>
 
@@ -240,7 +232,7 @@ function App() {
           <div
             className="pin-scroll"
             style={{
-              animationPlayState: isDragging || !isPlaying ? "paused" : "running", // Pause animation when dragging
+              animationPlayState: isDragging || !isAutoScroll ? "paused" : "running", // Pause animation when dragging
               pointerEvents: isDragging ? "none" : "auto", // Disable touch on sidebar when dragging
             }}
           >
@@ -256,12 +248,12 @@ function App() {
           </div>
         </div>
 
-        {/* Pause/Play button above the sidebar */}
-        <button className="play-toggle" onClick={() => setIsPlaying((prev) => !prev)}>
-          {isPlaying ? "Pause" : "Play"}
+        {/* Play toggle button (visible on desktop and tablet) */}
+        <button className="play-toggle" onClick={() => setIsAutoScroll((prev) => !prev)}>
+          {isAutoScroll ? "Pause" : "Play"}
         </button>
 
-        {/* Reset button (labeled "reset") */}
+        {/* Reset button (clears pins) */}
         <button className="reset-button" onClick={handleResetBoard}>
           Reset
         </button>
@@ -291,31 +283,36 @@ function App() {
               <img src={pin.src} alt={pin.alt} className="pin" loading="lazy" />
             </div>
           ))}
-          {selectedPin && (
-            <div 
-              className="dragging-pin" 
-              style={{ 
-                left: pinPosition.x,
-                top: pinPosition.y,
-                touchAction: "none",
-                position: "absolute"
-              }}
-            >
-              <img src={selectedPin.src} alt={selectedPin.alt} className="pin dragging" loading="lazy" />
-            </div>
-          )}
-          {sparklePosition && (
-            <div 
-              className="sparkle" 
-              style={{ 
-                left: sparklePosition.x,
-                top: sparklePosition.y,
-                position: "absolute"
-              }} 
-            />
-          )}
         </div>
       </div>
+
+      {/* Render dragging pin and sparkle at the root level, outside all containers */}
+      {selectedPin && (
+        <div 
+          className="dragging-pin" 
+          style={{ 
+            left: pinPosition.x,
+            top: pinPosition.y + boardRef.current?.getBoundingClientRect().top,
+            touchAction: "none",
+            position: "fixed",
+            zIndex: 9999
+          }}
+        >
+          <img src={selectedPin.src} alt={selectedPin.alt} className="pin dragging" loading="lazy" />
+        </div>
+      )}
+      
+      {sparklePosition && (
+        <div 
+          className="sparkle" 
+          style={{ 
+            left: sparklePosition.x,
+            top: sparklePosition.y + boardRef.current?.getBoundingClientRect().top,
+            position: "fixed",
+            zIndex: 9998
+          }} 
+        />
+      )}
 
       {/* Footer with small text at the very bottom (scroll down to see) */}
       <footer className="page-footer">

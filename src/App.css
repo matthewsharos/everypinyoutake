@@ -52,18 +52,20 @@ body {
   display: inline-block;
 }
 
-/* Container for board and sidebar */
+/* Main container */
 .container {
   position: relative;
-  max-width: 1600px;
+  width: 100%;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 0;
-  margin-top: -40px;
+  overflow: visible;
+  min-height: 80vh;
 }
 
-/* Force all children to inherit custom cursor while dragging */
+/* Prevent scrolling while dragging */
 .container.dragging * {
-  cursor: inherit !important;
+  cursor: grabbing;
+  touch-action: none;
 }
 
 /* Sidebar (narrower) */
@@ -181,12 +183,12 @@ body {
 
 /* Dragging pin follows the mouse/touch */
 .dragging-pin {
-  position: absolute;
   width: 180px;
   height: 180px;
   pointer-events: none;
-  z-index: 1000;
+  z-index: 9999;
   transform: translate(-50%, -50%);
+  will-change: transform, left, top;
 }
 
 .dragging-pin .pin {
@@ -196,14 +198,14 @@ body {
 
 /* Sparkle effect after dropping */
 .sparkle {
-  position: absolute;
   width: 180px;
   height: 180px;
   background: radial-gradient(circle, #ffff00 0%, transparent 70%);
   opacity: 0.8;
   animation: sparkleAnimation 1s ease-out forwards;
-  z-index: 999;
+  z-index: 9998;
   transform: translate(-50%, -50%);
+  will-change: transform, opacity;
 }
 
 @keyframes sparkleAnimation {
@@ -352,12 +354,14 @@ body {
     height: 80px;
     touch-action: none;
     transform: translate(-50%, -50%);
+    z-index: 9999;
   }
 
   .sparkle {
     width: 80px;
     height: 80px;
     transform: translate(-50%, -50%);
+    z-index: 9998;
   }
 
   .pin-thumb {
