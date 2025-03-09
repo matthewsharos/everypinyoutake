@@ -93,38 +93,38 @@ function App() {
   const handleDrop = (e) => {
     if (!selectedPin) return;
     
-    let clientX, clientY;
-    if (e.type === "mouseup") {
-      clientX = e.clientX;
-      clientY = e.clientY;
-    } else if (e.type === "touchend") {
-      // For touchend, use the last known pin position since we don't get coordinates
-      const boardRect = boardRef.current.getBoundingClientRect();
-      clientX = boardRect.left + pinPosition.x;
-      clientY = boardRect.top + pinPosition.y;
-    }
-
+    // Use the current pinPosition for the drop - this is already board-relative
+    // and represents exactly where the user's finger is
+    const dropX = pinPosition.x;
+    const dropY = pinPosition.y;
     const boardRect = boardRef.current.getBoundingClientRect();
-
+    
+    // Check if the drop position is within the board boundaries
+    const clientX = dropX + boardRect.left;
+    const clientY = dropY + boardRect.top;
+    
     if (
       clientX >= boardRect.left &&
       clientX <= boardRect.right &&
       clientY >= boardRect.top &&
       clientY <= boardRect.bottom
     ) {
+      // Add the pin to the board at the exact finger position
       setBoardPins((prev) => [
         ...prev,
-        { ...selectedPin, position: { x: pinPosition.x, y: pinPosition.y } },
+        { ...selectedPin, position: { x: dropX, y: dropY } },
       ]);
 
-      // Use the final pin position for the sparkle
+      // Show sparkle effect at the exact drop position
       new Audio(pinSound).play();
-      setSparklePosition({ x: pinPosition.x, y: pinPosition.y });
+      setSparklePosition({ x: dropX, y: dropY });
       setTimeout(() => setSparklePosition(null), 1000);
     } else {
+      // Return the pin to the sidebar if dropped outside the board
       setAvailablePins((prev) => [...prev, selectedPin]);
     }
 
+    // Reset dragging state
     setSelectedPin(null);
     setIsDragging(false);
     if (sidebarRef.current) {
@@ -324,7 +324,7 @@ function App() {
         </div>
       </div>
 
-      {/* Render dragging pin and sparkle at the root level, outside all containers */}
+      {/* Render dragging pin and sparkle outside any other containers */}
       {selectedPin && (
         <div 
           className="dragging-pin"
