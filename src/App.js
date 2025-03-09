@@ -62,7 +62,7 @@ function App() {
       e.preventDefault();
       e.stopPropagation();
       
-      const containerRect = containerRef.current.getBoundingClientRect();
+      const boardRect = boardRef.current.getBoundingClientRect();
       let clientX, clientY;
 
       if (e.type === "mousemove") {
@@ -73,10 +73,10 @@ function App() {
         clientY = e.touches[0].clientY;
       }
 
-      // Position pin directly under touch point
+      // Position relative to the board instead of container
       setPinPosition({
-        x: clientX - containerRect.left,
-        y: clientY - containerRect.top
+        x: clientX - boardRect.left,
+        y: clientY - boardRect.top
       });
     }
 
@@ -96,7 +96,6 @@ function App() {
     
     if (selectedPin) return;
 
-    // Start dragging immediately on touch
     let clientX, clientY;
     if (e.type === "touchstart") {
       clientX = e.touches[0].clientX;
@@ -120,11 +119,11 @@ function App() {
       sidebarRef.current.style.touchAction = "none";
     }
 
-    // Position pin directly under touch point
-    const containerRect = containerRef.current.getBoundingClientRect();
+    // Position relative to the board
+    const boardRect = boardRef.current.getBoundingClientRect();
     setPinPosition({
-      x: clientX - containerRect.left,
-      y: clientY - containerRect.top
+      x: clientX - boardRect.left,
+      y: clientY - boardRect.top
     });
   };
 
@@ -142,7 +141,6 @@ function App() {
     }
 
     const boardRect = boardRef.current.getBoundingClientRect();
-    const containerRect = containerRef.current.getBoundingClientRect();
 
     if (
       clientX >= boardRect.left &&
@@ -150,7 +148,7 @@ function App() {
       clientY >= boardRect.top &&
       clientY <= boardRect.bottom
     ) {
-      // Drop pin directly under touch point
+      // Drop position relative to board
       const dropX = clientX - boardRect.left;
       const dropY = clientY - boardRect.top;
 
@@ -159,11 +157,9 @@ function App() {
         { ...selectedPin, position: { x: dropX, y: dropY } },
       ]);
 
-      // Position sparkle directly under touch point
+      // Sparkle position relative to board
       new Audio(pinSound).play();
-      const sparkleX = clientX - containerRect.left;
-      const sparkleY = clientY - containerRect.top;
-      setSparklePosition({ x: sparkleX, y: sparkleY });
+      setSparklePosition({ x: dropX, y: dropY });
       setTimeout(() => setSparklePosition(null), 1000);
     } else {
       setAvailablePins((prev) => [...prev, selectedPin]);
@@ -291,7 +287,8 @@ function App() {
               style={{ 
                 left: pinPosition.x,
                 top: pinPosition.y,
-                touchAction: "none"
+                touchAction: "none",
+                position: "absolute"
               }}
             >
               <img src={selectedPin.src} alt={selectedPin.alt} className="pin dragging" loading="lazy" />
@@ -302,7 +299,8 @@ function App() {
               className="sparkle" 
               style={{ 
                 left: sparklePosition.x,
-                top: sparklePosition.y
+                top: sparklePosition.y,
+                position: "absolute"
               }} 
             />
           )}
