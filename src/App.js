@@ -3,7 +3,6 @@ import "./App.css";
 import pinBoard from "./images/pin-board.png";
 import mickeyHand from "./images/mickey-hand.png";
 import pinSound from "./sounds/pin-sound.mp3";
-import instagramIcon from "./images/instagram.png";
 
 // Dynamically import all images from src/pins/ with lazy loading
 function importAll(r) {
@@ -212,8 +211,17 @@ function App() {
           target="_blank"
           rel="noopener noreferrer"
           className="instagram-link"
+          aria-label="Every Pin You Take on Instagram"
         >
-          <img src={instagramIcon} alt="Instagram" />
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="32"
+            height="32"
+            fill="#E1306C"
+            viewBox="0 0 24 24"
+          >
+            <path d="M7.75 2h8.5A5.76 5.76 0 0122 7.75v8.5A5.76 5.76 0 0116.25 22h-8.5A5.76 5.76 0 012 16.25v-8.5A5.76 5.76 0 017.75 2zm0 2A3.75 3.75 0 004 7.75v8.5A3.75 3.75 0 007.75 20h8.5A3.75 3.75 0 0020 16.25v-8.5A3.75 3.75 0 0016.25 4h-8.5zM12 7a5 5 0 110 10 5 5 0 010-10zm0 2a3 3 0 100 6 3 3 0 000-6zm4.75-3a1.25 1.25 0 110 2.5 1.25 1.25 0 010-2.5z" />
+          </svg>
         </a>
       </header>
 
