@@ -59,6 +59,9 @@ function App() {
   useEffect(() => {
     function handleMove(e) {
       if (!selectedPin) return;
+      e.preventDefault();
+      e.stopPropagation();
+      
       const containerRect = containerRef.current.getBoundingClientRect();
       let clientX, clientY;
 
@@ -66,25 +69,19 @@ function App() {
         clientX = e.clientX;
         clientY = e.clientY;
       } else if (e.type === "touchmove") {
-        e.preventDefault(); // Prevent scrolling while dragging
         clientX = e.touches[0].clientX;
         clientY = e.touches[0].clientY;
       }
 
-      const mouseX = clientX - containerRect.left;
-      const mouseY = clientY - containerRect.top;
-      const isMobile = window.innerWidth <= 767;
-      const pinSize = isMobile ? 80 : 180; // Base pin size
-      
-      // Center the pin on the touch/mouse point
+      // Position pin directly under touch point
       setPinPosition({
-        x: mouseX - (pinSize / 2),
-        y: mouseY - (pinSize / 2),
+        x: clientX - containerRect.left,
+        y: clientY - containerRect.top
       });
     }
 
     const container = containerRef.current;
-    container.addEventListener("mousemove", handleMove);
+    container.addEventListener("mousemove", handleMove, { passive: false });
     container.addEventListener("touchmove", handleMove, { passive: false });
     return () => {
       container.removeEventListener("mousemove", handleMove);
@@ -94,12 +91,12 @@ function App() {
 
   // Pick up a pin from sidebar or board
   const handlePickUp = (pin, origin) => (e) => {
-    e.stopPropagation();
     e.preventDefault();
-    const isMobile = window.innerWidth <= 767;
-    const pinSize = isMobile ? 80 : 180; // Base pin size
+    e.stopPropagation();
+    
+    if (selectedPin) return;
 
-    // Handle both touch and mouse events
+    // Start dragging immediately on touch
     let clientX, clientY;
     if (e.type === "touchstart") {
       clientX = e.touches[0].clientX;
@@ -123,24 +120,19 @@ function App() {
       sidebarRef.current.style.touchAction = "none";
     }
 
-    // Position pin at touch/click point
+    // Position pin directly under touch point
     const containerRect = containerRef.current.getBoundingClientRect();
-    const pointX = clientX - containerRect.left;
-    const pointY = clientY - containerRect.top;
-
     setPinPosition({
-      x: pointX - (pinSize / 2),
-      y: pointY - (pinSize / 2),
+      x: clientX - containerRect.left,
+      y: clientY - containerRect.top
     });
   };
 
   // Drop the selected pin
   const handleDrop = (e) => {
     if (!selectedPin) return;
+    
     let clientX, clientY;
-    const isMobile = window.innerWidth <= 767;
-    const pinSize = isMobile ? 80 : 180; // Base pin size
-
     if (e.type === "mouseup") {
       clientX = e.clientX;
       clientY = e.clientY;
@@ -158,19 +150,19 @@ function App() {
       clientY >= boardRect.top &&
       clientY <= boardRect.bottom
     ) {
-      // Calculate drop position relative to the board
-      const dropX = clientX - boardRect.left - (pinSize / 2);
-      const dropY = clientY - boardRect.top - (pinSize / 2);
+      // Drop pin directly under touch point
+      const dropX = clientX - boardRect.left;
+      const dropY = clientY - boardRect.top;
 
       setBoardPins((prev) => [
         ...prev,
         { ...selectedPin, position: { x: dropX, y: dropY } },
       ]);
 
-      // Play sound and show sparkle effect
+      // Position sparkle directly under touch point
       new Audio(pinSound).play();
-      const sparkleX = clientX - containerRect.left - (pinSize / 2);
-      const sparkleY = clientY - containerRect.top - (pinSize / 2);
+      const sparkleX = clientX - containerRect.left;
+      const sparkleY = clientY - containerRect.top;
       setSparklePosition({ x: sparkleX, y: sparkleY });
       setTimeout(() => setSparklePosition(null), 1000);
     } else {
@@ -229,9 +221,8 @@ function App() {
         onMouseUp={handleDrop}
         onTouchEnd={handleDrop}
         style={{
-          cursor: selectedPin
-            ? `url(${mickeyHand}) 32 32, pointer`
-            : "default",
+          cursor: selectedPin ? `url(${mickeyHand}) 32 32, pointer` : "default",
+          touchAction: "none"
         }}
       >
         {/* Sidebar with rolling pin thumbnails (horizontal on mobile), disable touch/animation when dragging */}
@@ -286,7 +277,7 @@ function App() {
               onMouseDown={handlePickUp(pin, "board")}
               onTouchStart={handlePickUp(pin, "board")}
               style={{ 
-                left: pin.position.x, 
+                left: pin.position.x,
                 top: pin.position.y,
                 touchAction: "none"
               }}
@@ -295,12 +286,25 @@ function App() {
             </div>
           ))}
           {selectedPin && (
-            <div className="dragging-pin" style={{ left: pinPosition.x, top: pinPosition.y }}>
+            <div 
+              className="dragging-pin" 
+              style={{ 
+                left: pinPosition.x,
+                top: pinPosition.y,
+                touchAction: "none"
+              }}
+            >
               <img src={selectedPin.src} alt={selectedPin.alt} className="pin dragging" loading="lazy" />
             </div>
           )}
           {sparklePosition && (
-            <div className="sparkle" style={{ left: sparklePosition.x, top: sparklePosition.y }} />
+            <div 
+              className="sparkle" 
+              style={{ 
+                left: sparklePosition.x,
+                top: sparklePosition.y
+              }} 
+            />
           )}
         </div>
       </div>

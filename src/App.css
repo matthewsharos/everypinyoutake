@@ -169,7 +169,7 @@ body {
   height: 180px;
   z-index: 3;
   cursor: pointer;
-  transform: translate(0, 0);
+  transform: translate(-50%, -50%);
 }
 
 .pin {
@@ -186,7 +186,7 @@ body {
   height: 180px;
   pointer-events: none;
   z-index: 4;
-  transform: translate(0, 0);
+  transform: translate(-50%, -50%);
 }
 
 .dragging-pin .pin {
@@ -203,7 +203,7 @@ body {
   opacity: 0.8;
   animation: sparkleAnimation 1s ease-out forwards;
   z-index: 5;
-  transform: translate(0, 0);
+  transform: translate(-50%, -50%);
 }
 
 @keyframes sparkleAnimation {
@@ -344,19 +344,20 @@ body {
     width: 80px;
     height: 80px;
     touch-action: none;
+    transform: translate(-50%, -50%);
   }
 
   .dragging-pin {
     width: 80px;
     height: 80px;
     touch-action: none;
-    transform: translate(-50%, -50%); /* Center on touch point */
+    transform: translate(-50%, -50%);
   }
 
   .sparkle {
     width: 80px;
     height: 80px;
-    transform: translate(-50%, -50%); /* Center on touch point */
+    transform: translate(-50%, -50%);
   }
 
   .pin-thumb {
