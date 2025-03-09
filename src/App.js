@@ -93,17 +93,6 @@ function App() {
     };
   }, [selectedPin]);
 
-  // Function to properly position elements on the page
-  const getFixedPosition = (boardX, boardY) => {
-    if (!boardRef.current) return { x: 0, y: 0 };
-    
-    const boardRect = boardRef.current.getBoundingClientRect();
-    return {
-      x: boardX + boardRect.left,
-      y: boardY + boardRect.top
-    };
-  };
-  
   const handleDrop = (e) => {
     if (!selectedPin) return;
     
