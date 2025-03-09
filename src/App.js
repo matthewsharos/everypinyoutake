@@ -79,106 +79,16 @@ function App() {
       });
     }
 
-    // Direct touch/click handler for pins in sidebar and board
-    function handlePinInteraction(e) {
-      // Skip if already dragging a pin
-      if (selectedPin) return;
-      
-      // Find the pin element that was touched/clicked
-      let target = e.target;
-      let pinElement = null;
-      let origin = null;
-      
-      // Walk up the DOM to find the pin container or item
-      while (target && !pinElement) {
-        if (target.classList.contains('pin-item')) {
-          pinElement = target;
-          origin = 'sidebar';
-          break;
-        } else if (target.classList.contains('pin-container')) {
-          pinElement = target;
-          origin = 'board';
-          break;
-        }
-        target = target.parentElement;
-      }
-      
-      // Return if no pin was found
-      if (!pinElement) return;
-
-      // Prevent default behaviors
-      e.preventDefault();
-      e.stopPropagation();
-      
-      // Find the pin data
-      let pin;
-      if (origin === 'sidebar') {
-        const pinImg = pinElement.querySelector('img');
-        if (!pinImg) return;
-        
-        const pinAlt = pinImg.alt;
-        pin = availablePins.find(p => p.alt === pinAlt);
-        if (!pin) return;
-        
-        // Remove from sidebar
-        setAvailablePins(prev => prev.filter(p => p.alt !== pinAlt));
-      } else {
-        const pinImg = pinElement.querySelector('img');
-        if (!pinImg) return;
-        
-        const pinAlt = pinImg.alt;
-        pin = boardPins.find(p => p.alt === pinAlt);
-        if (!pin) return;
-        
-        // Remove from board
-        setBoardPins(prev => prev.filter(p => p.alt !== pinAlt));
-      }
-      
-      // Get touch/mouse position
-      let clientX, clientY;
-      if (e.type.startsWith('touch')) {
-        clientX = e.touches[0].clientX;
-        clientY = e.touches[0].clientY;
-      } else {
-        clientX = e.clientX;
-        clientY = e.clientY;
-      }
-      
-      // Set up dragging state
-      setSelectedPin(pin);
-      setIsDragging(true);
-      
-      // Position pin relative to board
-      const boardRect = boardRef.current.getBoundingClientRect();
-      setPinPosition({
-        x: clientX - boardRect.left,
-        y: clientY - boardRect.top
-      });
-      
-      // Disable sidebar scrolling while dragging
-      if (sidebarRef.current) {
-        sidebarRef.current.style.touchAction = 'none';
-      }
-    }
-
-    // Attach touch handlers directly to container
+    // Only attach move handlers
     const container = containerRef.current;
-    
-    // Mouse/touch move for dragging
     container.addEventListener('mousemove', handleMove, { passive: false });
     container.addEventListener('touchmove', handleMove, { passive: false });
-    
-    // Touch event for initial interaction
-    container.addEventListener('mousedown', handlePinInteraction, { passive: false });
-    container.addEventListener('touchstart', handlePinInteraction, { passive: false });
 
     return () => {
       container.removeEventListener('mousemove', handleMove);
       container.removeEventListener('touchmove', handleMove);
-      container.removeEventListener('mousedown', handlePinInteraction);
-      container.removeEventListener('touchstart', handlePinInteraction);
     };
-  }, [selectedPin, availablePins, boardPins]);
+  }, [selectedPin]);
 
   const handleDrop = (e) => {
     if (!selectedPin) return;
@@ -285,6 +195,48 @@ function App() {
                 key={pin.alt}
                 className="pin-item"
                 style={{ touchAction: "none" }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  
+                  // Remove from sidebar
+                  setAvailablePins(prev => prev.filter(p => p.alt !== pin.alt));
+                  
+                  // Set up dragging
+                  setSelectedPin(pin);
+                  setIsDragging(true);
+                  
+                  // Position relative to board
+                  const boardRect = boardRef.current.getBoundingClientRect();
+                  const clientX = e.clientX;
+                  const clientY = e.clientY;
+                  
+                  setPinPosition({
+                    x: clientX - boardRect.left,
+                    y: clientY - boardRect.top
+                  });
+                }}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  
+                  // Remove from sidebar
+                  setAvailablePins(prev => prev.filter(p => p.alt !== pin.alt));
+                  
+                  // Set up dragging
+                  setSelectedPin(pin);
+                  setIsDragging(true);
+                  
+                  // Position relative to board
+                  const boardRect = boardRef.current.getBoundingClientRect();
+                  const clientX = e.touches[0].clientX;
+                  const clientY = e.touches[0].clientY;
+                  
+                  setPinPosition({
+                    x: clientX - boardRect.left,
+                    y: clientY - boardRect.top
+                  });
+                }}
               >
                 <img src={pin.src} alt={pin.alt} className="pin-thumb" loading="lazy" />
               </div>
@@ -293,7 +245,7 @@ function App() {
         </div>
 
         {/* Play toggle button (visible on desktop and tablet) */}
-        <button className="play-toggle" onClick={() => setIsAutoScroll((prev) => !prev)}>
+        <button className="play-toggle" onClick={() => setIsAutoScroll(!isAutoScroll)}>
           {isAutoScroll ? "Pause" : "Play"}
         </button>
 
@@ -323,6 +275,48 @@ function App() {
                 top: pin.position.y,
                 touchAction: "none"
               }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Remove from board
+                setBoardPins(prev => prev.filter(p => p.alt !== pin.alt));
+                
+                // Set up dragging
+                setSelectedPin(pin);
+                setIsDragging(true);
+                
+                // Position relative to board
+                const boardRect = boardRef.current.getBoundingClientRect();
+                const clientX = e.clientX;
+                const clientY = e.clientY;
+                
+                setPinPosition({
+                  x: clientX - boardRect.left,
+                  y: clientY - boardRect.top
+                });
+              }}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Remove from board
+                setBoardPins(prev => prev.filter(p => p.alt !== pin.alt));
+                
+                // Set up dragging
+                setSelectedPin(pin);
+                setIsDragging(true);
+                
+                // Position relative to board
+                const boardRect = boardRef.current.getBoundingClientRect();
+                const clientX = e.touches[0].clientX;
+                const clientY = e.touches[0].clientY;
+                
+                setPinPosition({
+                  x: clientX - boardRect.left,
+                  y: clientY - boardRect.top
+                });
+              }}
             >
               <img src={pin.src} alt={pin.alt} className="pin" loading="lazy" />
             </div>
@@ -333,13 +327,14 @@ function App() {
       {/* Render dragging pin and sparkle at the root level, outside all containers */}
       {selectedPin && (
         <div 
-          className="dragging-pin" 
+          className="dragging-pin"
           style={{ 
-            left: pinPosition.x,
-            top: pinPosition.y + boardRef.current?.getBoundingClientRect().top,
-            touchAction: "none",
             position: "fixed",
-            zIndex: 9999
+            left: pinPosition.x + boardRef.current?.getBoundingClientRect().left,
+            top: pinPosition.y + boardRef.current?.getBoundingClientRect().top,
+            zIndex: 9999,
+            touchAction: "none",
+            pointerEvents: "none",
           }}
         >
           <img src={selectedPin.src} alt={selectedPin.alt} className="pin dragging" loading="lazy" />
@@ -350,10 +345,11 @@ function App() {
         <div 
           className="sparkle" 
           style={{ 
-            left: sparklePosition.x,
-            top: sparklePosition.y + boardRef.current?.getBoundingClientRect().top,
             position: "fixed",
-            zIndex: 9998
+            left: sparklePosition.x + boardRef.current?.getBoundingClientRect().left,
+            top: sparklePosition.y + boardRef.current?.getBoundingClientRect().top,
+            zIndex: 9998,
+            pointerEvents: "none"
           }} 
         />
       )}
