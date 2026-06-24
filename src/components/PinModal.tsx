@@ -13,6 +13,7 @@ interface Props {
 export default function PinModal({ pins }: Props) {
   const [index, setIndex] = useState<number | null>(null);
   const [imgIdx, setImgIdx] = useState(0);
+  const [zoomed, setZoomed] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
 
   const close = useCallback(() => setIndex(null), []);
@@ -22,7 +23,10 @@ export default function PinModal({ pins }: Props) {
     [pins.length],
   );
 
-  useEffect(() => setImgIdx(0), [index]);
+  useEffect(() => {
+    setImgIdx(0);
+    setZoomed(false);
+  }, [index]);
 
   // Open from clicks/keys on the static grid (event delegation).
   useEffect(() => {
@@ -52,6 +56,10 @@ export default function PinModal({ pins }: Props) {
   useEffect(() => {
     if (index === null) return;
     const onKey = (e: KeyboardEvent) => {
+      if (zoomed) {
+        if (e.key === 'Escape') setZoomed(false);
+        return;
+      }
       if (e.key === 'Escape') close();
       else if (e.key === 'ArrowRight') go(1);
       else if (e.key === 'ArrowLeft') go(-1);
@@ -64,7 +72,7 @@ export default function PinModal({ pins }: Props) {
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = prev;
     };
-  }, [index, close, go]);
+  }, [index, close, go, zoomed]);
 
   if (index === null) return null;
   const pin = pins[index];
@@ -134,14 +142,30 @@ export default function PinModal({ pins }: Props) {
         </button>
 
         {/* image */}
-        <div className="flex shrink-0 flex-col items-center justify-center gap-3 bg-gradient-to-b from-white to-[#fbf5ec] p-5 sm:w-[56%] sm:p-8">
-          <div className="flex h-[36vh] w-full items-center justify-center sm:h-[74vh]">
+        <div className="flex shrink-0 flex-col items-center justify-center gap-3 bg-gradient-to-b from-white to-[#f7f7f9] p-5 sm:w-[56%] sm:p-8">
+          <div className="relative flex h-[36vh] w-full items-center justify-center sm:h-[74vh]">
             {activeImg ? (
-              <img
-                src={activeImg}
-                alt={pin.pin_name}
-                className="max-h-full max-w-full object-contain drop-shadow-[0_12px_22px_rgba(110,95,70,0.22)]"
-              />
+              <>
+                <img
+                  src={activeImg}
+                  alt={pin.pin_name}
+                  onClick={() => setZoomed(true)}
+                  className="max-h-full max-w-full cursor-zoom-in object-contain drop-shadow-[0_12px_22px_rgba(110,95,70,0.22)]"
+                />
+                <button
+                  type="button"
+                  onClick={() => setZoomed(true)}
+                  aria-label="View full size"
+                  className="absolute bottom-1 right-1 grid h-9 w-9 place-items-center rounded-full bg-white/85 text-text shadow-sm ring-1 ring-black/5 backdrop-blur transition hover:bg-white"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+                    <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+                    <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+                    <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+                  </svg>
+                </button>
+              </>
             ) : (
               <span className="font-display text-5xl text-[#ddd2bf]">⬡</span>
             )}
@@ -209,6 +233,26 @@ export default function PinModal({ pins }: Props) {
           </div>
         </div>
       </div>
+
+      {zoomed && activeImg && (
+        <div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-[rgba(20,18,14,0.93)] p-4"
+          onClick={() => setZoomed(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Full size image"
+        >
+          <img src={activeImg} alt={pin.pin_name} className="max-h-[96vh] max-w-[96vw] object-contain" />
+          <button
+            type="button"
+            onClick={() => setZoomed(false)}
+            aria-label="Close full size"
+            className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-white/90 text-text shadow ring-1 ring-black/10"
+          >
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   );
 }

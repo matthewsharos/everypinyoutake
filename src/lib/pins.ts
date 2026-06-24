@@ -30,20 +30,30 @@ const COLUMNS =
 // Fields searched by the public metadata search (v1: ilike OR; task #6 upgrades to Postgres FTS + pg_trgm).
 const SEARCH_FIELDS = ['pin_name', 'series', 'origin', 'edition', 'tags', 'notes'];
 
+export type SortKey = 'created' | 'updated' | 'az';
+
 export interface GetCollectionOpts {
   /** Filter by collected_type. Omit for the whole displayed collection. */
   type?: CollectedType;
   /** Free-text search across pin metadata. */
   search?: string;
+  /** Sort order for browse views (search results are relevance-ranked). */
+  sort?: SortKey;
   limit?: number;
   offset?: number;
+}
+
+function orderBy(q: any, sort: SortKey) {
+  if (sort === 'updated') return q.order('updated_at', { ascending: false });
+  if (sort === 'az') return q.order('pin_name', { ascending: true });
+  return q.order('created_at', { ascending: false });
 }
 
 /**
  * Public collection query — reads `pins` ONLY (pin_archive is admin-only and never shown publicly).
  */
 export async function getCollection(opts: GetCollectionOpts = {}): Promise<{ pins: Pin[]; total: number }> {
-  const { type, search, limit = 60, offset = 0 } = opts;
+  const { type, search, sort = 'created', limit = 60, offset = 0 } = opts;
   const s = (search ?? '').trim();
 
   if (s) {
@@ -58,15 +68,15 @@ export async function getCollection(opts: GetCollectionOpts = {}): Promise<{ pin
     if (!error && Array.isArray(data)) {
       return { pins: data as Pin[], total: data.length };
     }
-    return ilikeCollection(type, s, limit, offset);
+    return ilikeCollection(type, s, sort, limit, offset);
   }
 
   let q = supabase
     .from('pins')
     .select(COLUMNS, { count: 'exact' })
-    .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
   if (type) q = q.eq('collected_type', type);
+  q = orderBy(q, sort);
 
   const { data, count, error } = await q;
   if (error) throw error;
@@ -76,6 +86,7 @@ export async function getCollection(opts: GetCollectionOpts = {}): Promise<{ pin
 async function ilikeCollection(
   type: CollectedType | undefined,
   search: string,
+  sort: SortKey,
   limit: number,
   offset: number,
 ): Promise<{ pins: Pin[]; total: number }> {
@@ -83,10 +94,10 @@ async function ilikeCollection(
   let q = supabase
     .from('pins')
     .select(COLUMNS, { count: 'exact' })
-    .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
   if (type) q = q.eq('collected_type', type);
   if (s) q = q.or(SEARCH_FIELDS.map((f) => `${f}.ilike.%${s}%`).join(','));
+  q = orderBy(q, sort);
   const { data, count, error } = await q;
   if (error) throw error;
   return { pins: (data ?? []) as Pin[], total: count ?? 0 };

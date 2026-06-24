@@ -1,13 +1,17 @@
 ---
 import Base from '../layouts/Base.astro';
 import PinGrid from '../components/PinGrid.astro';
-import { getCollection, type Pin } from '../lib/pins';
+import SortSelect from '../components/SortSelect.astro';
+import { getCollection, type Pin, type SortKey } from '../lib/pins';
+
+const sortParam = Astro.url.searchParams.get('sort');
+const sort: SortKey = sortParam === 'updated' || sortParam === 'az' ? sortParam : 'created';
 
 let pins: Pin[] = [];
 let total = 0;
 let loadError = '';
 try {
-  const r = await getCollection({ type: 'For Trade', limit: 120 });
+  const r = await getCollection({ type: 'For Trade', sort, limit: 120 });
   pins = r.pins;
   total = r.total;
 } catch (err) {
@@ -29,6 +33,10 @@ const fmt = (n: number) => n.toLocaleString('en-US');
         <a href="https://www.tiktok.com/@everypinyoutake2" class="text-sky hover:underline">TikTok</a>.
       </p>
     </header>
+
+    <div class="mb-5 flex justify-end">
+      <SortSelect sort={sort} action="/for-trade" />
+    </div>
 
     {loadError ? (
       <div class="rounded-2xl border border-magenta/40 bg-magenta/5 p-6 text-sm text-magenta">

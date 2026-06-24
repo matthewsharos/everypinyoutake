@@ -1,9 +1,12 @@
 ---
 import Base from '../layouts/Base.astro';
 import PinGrid from '../components/PinGrid.astro';
-import { getCollection, getStats, type Pin } from '../lib/pins';
+import SortSelect from '../components/SortSelect.astro';
+import { getCollection, getStats, type Pin, type SortKey } from '../lib/pins';
 
 const q = (Astro.url.searchParams.get('q') ?? '').trim();
+const sortParam = Astro.url.searchParams.get('sort');
+const sort: SortKey = sortParam === 'updated' || sortParam === 'az' ? sortParam : 'created';
 
 let pins: Pin[] = [];
 let total = 0;
@@ -12,7 +15,7 @@ let loadError = '';
 
 try {
   const [collection, s] = await Promise.all([
-    getCollection({ search: q || undefined, limit: 60 }),
+    getCollection({ search: q || undefined, sort, limit: 60 }),
     getStats(),
   ]);
   pins = collection.pins;
@@ -50,18 +53,21 @@ const fmt = (n: number) => n.toLocaleString('en-US');
     </form>
 
     <!-- collection header -->
-    <div class="mb-5 mt-8 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+    <div class="mb-5 mt-8 flex flex-wrap items-center justify-between gap-3">
       <h1 class="text-xl font-semibold sm:text-2xl">
         {q ? 'Search results' : 'The Collection'}
       </h1>
-      <p class="text-sm text-muted">
-        {q
-          ? `${fmt(pins.length)}${pins.length >= 60 ? '+' : ''} ${pins.length === 1 ? 'result' : 'results'} for “${q}”`
-          : `${fmt(stats.total)} pins · ${fmt(stats.forTrade)} for trade · ${fmt(stats.iso)} ISO`}
-        {q && (
-          <a href="/" class="ml-2 text-sky hover:underline">clear</a>
-        )}
-      </p>
+      <div class="flex items-center gap-4">
+        <p class="text-sm text-muted">
+          {q
+            ? `${fmt(pins.length)}${pins.length >= 60 ? '+' : ''} ${pins.length === 1 ? 'result' : 'results'} for “${q}”`
+            : `${fmt(stats.total)} pins`}
+          {q && (
+            <a href="/" class="ml-2 text-sky hover:underline">clear</a>
+          )}
+        </p>
+        <SortSelect sort={sort} action="/" q={q} />
+      </div>
     </div>
 
     {loadError ? (

@@ -1,0 +1,31 @@
+---
+import type { SortKey } from '../lib/pins';
+
+interface Props {
+  sort: SortKey;
+  action: string;
+  q?: string;
+}
+const { sort, action, q } = Astro.props;
+
+const options: [SortKey, string][] = [
+  ['created', 'Newest'],
+  ['updated', 'Recently updated'],
+  ['az', 'A–Z'],
+];
+---
+
+<form method="get" action={action} class="flex items-center gap-2">
+  {q !== undefined && q !== '' && <input type="hidden" name="q" value={q} />}
+  <label for="sort" class="text-xs text-muted">Sort</label>
+  <select
+    id="sort"
+    name="sort"
+    onchange="this.form.submit()"
+    class="rounded-full border border-line bg-white py-1.5 pl-3 pr-8 text-sm outline-none transition-colors focus:border-sky/70"
+  >
+    {options.map(([value, label]) => (
+      <option value={value} selected={sort === value}>{label}</option>
+    ))}
+  </select>
+</form>
