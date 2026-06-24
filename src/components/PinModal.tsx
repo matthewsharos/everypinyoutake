@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Pin } from '../lib/pins';
+import { cleanNotes } from '../lib/notes';
 
 interface Props {
   pins: Pin[];
@@ -186,10 +187,10 @@ export default function PinModal({ pins }: Props) {
               ))}
           </dl>
 
-          {pin.notes && (
+          {cleanNotes(pin.notes) && (
             <div className="mt-5">
               <div className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted">Notes</div>
-              <p className="mt-1 text-sm leading-relaxed text-text/90">{pin.notes}</p>
+              <p className="mt-1 text-sm leading-relaxed text-text/90">{cleanNotes(pin.notes)}</p>
             </div>
           )}
 
