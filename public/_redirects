@@ -1,4 +1,0 @@
-# Cloudflare Pages redirects — https://developers.cloudflare.com/pages/configuration/redirects/
-
-# Canonicalize www → apex so Google indexes one hostname (matches <link rel="canonical">).
-https://www.everypinyoutake.com/* https://everypinyoutake.com/:splat 301!
