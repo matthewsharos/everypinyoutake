@@ -123,3 +123,27 @@ export async function getStats(): Promise<CollectionStats> {
 export function pinImage(pin: Pin): string | null {
   return pin.image_url || pin.image_url2 || pin.image_url3 || null;
 }
+
+export interface TikTok {
+  id: string;
+  url: string;
+  description: string | null;
+  created_at: string | null;
+}
+
+/** Curated TikTok videos (managed in the admin), newest first. */
+export async function getTikToks(limit = 12): Promise<TikTok[]> {
+  const { data, error } = await supabase
+    .from('tiktok_urls')
+    .select('id,url,description,created_at')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as TikTok[];
+}
+
+/** Extract the numeric video id from a TikTok URL (for the iframe embed). */
+export function tiktokId(url: string): string | null {
+  const m = url.match(/\/video\/(\d+)/);
+  return m ? m[1] : null;
+}

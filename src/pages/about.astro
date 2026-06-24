@@ -1,12 +1,20 @@
 ---
 import Base from '../layouts/Base.astro';
+import { getTikToks, tiktokId, type TikTok } from '../lib/pins';
 
-// Static content page — prerendered at build time.
-export const prerender = true;
+let tiktoks: TikTok[] = [];
+try {
+  tiktoks = await getTikToks();
+} catch {
+  // non-fatal — page still renders without the feed
+}
+const embeds = tiktoks
+  .map((t) => ({ ...t, vid: tiktokId(t.url) }))
+  .filter((t): t is TikTok & { vid: string } => Boolean(t.vid));
 ---
 
 <Base title="About — EveryPinYouTake" description="About the EveryPinYouTake Disney pin collection.">
-  <section class="wrap max-w-2xl py-16">
+  <section class="wrap max-w-2xl pb-8 pt-16">
     <h1 class="text-3xl font-bold sm:text-4xl">About</h1>
     <div class="mt-6 space-y-4 text-muted leading-relaxed">
       <p>
@@ -16,9 +24,8 @@ export const prerender = true;
       <p>
         Follow along on
         <a href="https://www.tiktok.com/@everypinyoutake2" target="_blank" rel="noopener noreferrer" class="text-sky hover:underline">TikTok</a>
-        and <a href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" class="text-sky hover:underline">Instagram</a>
-        for new finds, and check <a href="https://www.pinpics.com/" target="_blank" rel="noopener noreferrer" class="text-sky hover:underline">PinPics</a>
-        for pin references.
+        and <a href="https://www.instagram.com/everypinyoutake" target="_blank" rel="noopener noreferrer" class="text-sky hover:underline">Instagram</a>,
+        and find pins for sale on <a href="https://www.mercari.com/u/breannerae/" target="_blank" rel="noopener noreferrer" class="text-sky hover:underline">Mercari</a>.
       </p>
     </div>
 
@@ -27,4 +34,30 @@ export const prerender = true;
       <a href="/for-trade" class="btn btn-ghost">See what's for trade</a>
     </div>
   </section>
+
+  {embeds.length > 0 && (
+    <section class="wrap pb-20">
+      <div class="mb-6 flex items-end justify-between gap-4">
+        <h2 class="text-2xl font-bold sm:text-3xl">Latest on TikTok</h2>
+        <a href="https://www.tiktok.com/@everypinyoutake2" target="_blank" rel="noopener noreferrer" class="text-sm text-sky hover:underline">See all ↗</a>
+      </div>
+
+      <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        {embeds.map((t) => (
+          <div class="overflow-hidden rounded-2xl border border-line bg-surface">
+            {t.description && (
+              <p class="line-clamp-1 px-4 pb-1 pt-3 text-sm font-semibold">{t.description}</p>
+            )}
+            <iframe
+              src={`https://www.tiktok.com/embed/v2/${t.vid}`}
+              title={t.description ?? 'TikTok video'}
+              loading="lazy"
+              allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+              class="h-[600px] w-full border-0"
+            ></iframe>
+          </div>
+        ))}
+      </div>
+    </section>
+  )}
 </Base>
