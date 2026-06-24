@@ -107,10 +107,39 @@ export async function backupNow(): Promise<number> {
   return (await mutate('backup', {})).count as number;
 }
 
+/**
+ * Downscale an image to an optimized WebP thumbnail for the catalog grid.
+ * Runs in the browser via <canvas>; returns null if the image can't be decoded
+ * (the upload still proceeds with just the original).
+ */
+async function makeThumb(file: File, maxDim = 640, quality = 0.8): Promise<File | null> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+    const w = Math.round(bitmap.width * scale);
+    const h = Math.round(bitmap.height * scale);
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    bitmap.close?.();
+    const blob: Blob | null = await new Promise((resolve) =>
+      canvas.toBlob(resolve, 'image/webp', quality),
+    );
+    return blob ? new File([blob], 'thumb.webp', { type: 'image/webp' }) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Upload an image via the server (service key) and return its public URL. */
 export async function uploadPinImage(file: File): Promise<string> {
   const fd = new FormData();
   fd.append('file', file);
+  const thumb = await makeThumb(file);
+  if (thumb) fd.append('thumb', thumb);
   const res = await fetch('/api/admin/upload', { method: 'POST', body: fd });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.error || 'Upload failed.');

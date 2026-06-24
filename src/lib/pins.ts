@@ -135,6 +135,28 @@ export function pinImage(pin: Pin): string | null {
   return pin.image_url || pin.image_url2 || pin.image_url3 || null;
 }
 
+/**
+ * Map a full-size pin image URL to its optimized grid thumbnail (WebP, generated
+ * by scripts/generate-thumbs.mjs and on upload). Thumbs mirror the original's
+ * path under a `thumbs/` prefix of the same bucket, with the extension swapped to
+ * `.webp` — e.g. `…/pin-images/12342/abc.png` → `…/pin-images/thumbs/12342/abc.webp`.
+ * Returns the original URL unchanged for anything that isn't a stored pin image
+ * (external/legacy URLs, or an already-derived thumb), so the grid still renders.
+ * The grid `<img>` also falls back to the original on a 404, covering pins whose
+ * thumbnail hasn't been generated yet. Mirrored by scripts/generate-thumbs.mjs
+ * and the upload endpoint — keep the three in sync.
+ */
+export function thumbUrl(url: string | null): string | null {
+  if (!url) return url;
+  const marker = '/pin-images/';
+  const i = url.indexOf(marker);
+  if (i === -1) return url;
+  const rel = url.slice(i + marker.length);
+  if (rel.startsWith('thumbs/')) return url; // already a thumbnail
+  const base = url.slice(0, i) + marker + 'thumbs/' + rel;
+  return base.replace(/\.[a-z0-9]+($|\?)/i, '.webp$1');
+}
+
 export interface TikTok {
   id: string;
   url: string;

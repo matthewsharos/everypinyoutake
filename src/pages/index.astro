@@ -2,7 +2,7 @@
 import Base from '../layouts/Base.astro';
 import PinGrid from '../components/PinGrid.astro';
 import SortSelect from '../components/SortSelect.astro';
-import { getCollection, getStats, type Pin, type SortKey } from '../lib/pins';
+import { getCollection, getStats, pinImage, thumbUrl, type Pin, type SortKey } from '../lib/pins';
 
 const q = (Astro.url.searchParams.get('q') ?? '').trim();
 const sortParam = Astro.url.searchParams.get('sort');
@@ -26,9 +26,11 @@ try {
 }
 
 const fmt = (n: number) => n.toLocaleString('en-US');
+const lcpImage = pins.length ? thumbUrl(pinImage(pins[0])) : null;
 ---
 
 <Base>
+  {lcpImage && <link slot="head" rel="preload" as="image" href={lcpImage} fetchpriority="high" />}
   <section class="wrap pt-7 pb-16">
     <!-- search-first: drop straight into the collection -->
     <form method="get" action="/" id="search" class="relative mx-auto max-w-2xl">
@@ -51,6 +53,34 @@ const fmt = (n: number) => n.toLocaleString('en-US');
         Search
       </button>
     </form>
+
+    <script is:inline>
+      (() => {
+        const form = document.getElementById('search');
+        const input = form && form.querySelector('input[name="q"]');
+        if (!input) return;
+        let t;
+        input.addEventListener('input', () => {
+          clearTimeout(t);
+          const v = input.value.trim();
+          // search once a couple letters are typed, or when cleared back to empty
+          if (v.length === 1) return;
+          t = setTimeout(() => {
+            try { sessionStorage.setItem('ept:refocus', '1'); } catch {}
+            form.submit();
+          }, 350);
+        });
+        // after an auto-search reload, put the cursor back at the end of the box
+        try {
+          if (sessionStorage.getItem('ept:refocus')) {
+            sessionStorage.removeItem('ept:refocus');
+            input.focus();
+            const end = input.value.length;
+            try { input.setSelectionRange(end, end); } catch {}
+          }
+        } catch {}
+      })();
+    </script>
 
     <!-- collection header -->
     <div class="mb-5 mt-8 flex flex-wrap items-center justify-between gap-3">

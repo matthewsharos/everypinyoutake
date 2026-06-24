@@ -6,11 +6,37 @@ import Footer from '../components/Footer.astro';
 interface Props {
   title?: string;
   description?: string;
+  /** Absolute or root-relative image for social shares. */
+  image?: string;
+  /** Set true on pages that should not be indexed. */
+  noindex?: boolean;
 }
 const {
   title = 'EveryPinYouTake — Disney Pin Collection',
   description = 'A curated Disney pin collection — browse the collection, see what is In Search Of, and what is up For Trade.',
+  image = '/og-image.png',
+  noindex = false,
 } = Astro.props;
+
+const SITE_NAME = 'EveryPinYouTake';
+// Astro.site comes from `site` in astro.config.mjs. Build absolute URLs for canonical + OG.
+const canonicalURL = new URL(Astro.url.pathname, Astro.site).href;
+const ogImageURL = new URL(image, Astro.site).href;
+
+// Warm up the image origin early — every pin image is served from Supabase Storage.
+let imageOrigin = '';
+try {
+  imageOrigin = new URL(import.meta.env.PUBLIC_SUPABASE_URL).origin;
+} catch {}
+
+// Org/site structured data so Google can render rich results and a sitelinks box.
+const structuredData = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: SITE_NAME,
+  url: Astro.site?.href,
+  description,
+};
 ---
 
 <!doctype html>
@@ -20,10 +46,30 @@ const {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalURL} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+
+    <!-- Open Graph -->
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonicalURL} />
+    <meta property="og:site_name" content={SITE_NAME} />
+    <meta property="og:image" content={ogImageURL} />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImageURL} />
+
     <meta name="theme-color" content="#fdf8f5" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+
+    <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
+
+    {imageOrigin && <link rel="preconnect" href={imageOrigin} crossorigin />}
+    <slot name="head" />
 
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="apple-touch-icon" href="/favicon.png" />

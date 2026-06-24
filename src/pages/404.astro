@@ -1,0 +1,24 @@
+---
+import Base from '../layouts/Base.astro';
+
+// Prerender a static 404 so Cloudflare can serve it without invoking the SSR worker.
+export const prerender = true;
+---
+
+<Base title="Page Not Found — EveryPinYouTake" description="That pin wandered off. Let's get you back to the collection." noindex>
+  <section style="max-width: 42rem; margin: 0 auto; padding: 6rem 1.5rem; text-align: center;">
+    <p style="font-size: 4rem; margin: 0; line-height: 1;">🧷</p>
+    <h1 style="font-family: 'Fraunces', serif; font-size: 2rem; margin: 1rem 0 0.5rem;">
+      This pin wandered off
+    </h1>
+    <p style="color: #6b6b6b; margin: 0 0 2rem;">
+      The page you're looking for isn't here. Maybe it's back in the collection.
+    </p>
+    <a
+      href="/"
+      style="display: inline-block; padding: 0.75rem 1.5rem; border-radius: 999px; background: #1a1a1a; color: #fff; text-decoration: none; font-weight: 600;"
+    >
+      Back to the collection
+    </a>
+  </section>
+</Base>

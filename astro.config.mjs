@@ -2,14 +2,23 @@
 import { defineConfig, envField } from 'astro/config';
 import react from '@astrojs/react';
 import cloudflare from '@astrojs/cloudflare';
+import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
 
 // SSR on Cloudflare so the collection is always fresh after admin edits,
 // with static prerendering for content pages (see `export const prerender = true`).
 export default defineConfig({
+  // Canonical origin — powers <link rel="canonical">, Open Graph URLs, and the sitemap.
+  site: 'https://everypinyoutake.com',
   output: 'server',
   adapter: cloudflare({ imageService: 'compile' }),
-  integrations: [react()],
+  integrations: [
+    react(),
+    // Generates /sitemap-index.xml + /sitemap-0.xml at build; keep the admin out of it.
+    sitemap({
+      filter: (page) => !page.includes('/admin'),
+    }),
+  ],
   vite: {
     plugins: [tailwindcss()],
   },

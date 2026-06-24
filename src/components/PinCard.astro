@@ -1,6 +1,6 @@
 ---
 import type { Pin } from '../lib/pins';
-import { pinImage } from '../lib/pins';
+import { pinImage, thumbUrl } from '../lib/pins';
 
 interface Props {
   pin: Pin;
@@ -8,6 +8,9 @@ interface Props {
 }
 const { pin, index } = Astro.props;
 const img = pinImage(pin);
+const thumb = thumbUrl(img);
+// Prioritize the first row(s) the user sees on load (good LCP); lazy-load the rest.
+const eager = typeof index === 'number' && index < 10;
 
 const flags = [
   pin.is_limited_edition && { cls: 'chip-le', label: 'LE' },
@@ -33,7 +36,15 @@ const meta = [pin.origin, pin.year ? String(pin.year) : null].filter(Boolean).jo
       </span>
     )}
     {img ? (
-      <img src={img} alt={pin.pin_name} loading="lazy" decoding="async" />
+      <img
+        src={thumb}
+        data-full={img}
+        alt={pin.pin_name}
+        loading={eager ? 'eager' : 'lazy'}
+        fetchpriority={eager ? 'high' : 'low'}
+        decoding="async"
+        onerror="if(this.dataset.full&&this.src!==this.dataset.full){this.src=this.dataset.full}"
+      />
     ) : (
       <span class="pin-shot--empty" aria-hidden="true">⬡</span>
     )}

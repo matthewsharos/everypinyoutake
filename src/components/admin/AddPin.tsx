@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Pin, CollectedType } from '../../lib/pins';
 import { addFromArchive, addManual, searchArchive } from '../../lib/adminApi';
 import PinForm from './PinForm';
@@ -39,6 +39,20 @@ export default function AddPin() {
       setLoading(false);
     }
   };
+
+  // Search-as-you-type: fire once a couple letters are in; clear when emptied.
+  useEffect(() => {
+    const v = q.trim();
+    if (v.length === 0) {
+      setResults([]);
+      setSearched(false);
+      return;
+    }
+    if (v.length < 2) return;
+    const t = setTimeout(() => { runSearch(); }, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q]);
 
   const add = async (p: Pin) => {
     setErr('');

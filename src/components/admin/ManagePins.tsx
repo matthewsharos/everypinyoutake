@@ -31,11 +31,14 @@ export default function ManagePins() {
     }
   };
 
-  // initial load + on filter change
+  // Search-as-you-type (debounced) + reload on filter change. An empty box
+  // browses everything; a single letter waits for the next keystroke.
   useEffect(() => {
-    load();
+    if (q.trim().length === 1) return;
+    const t = setTimeout(() => { load(); }, 300);
+    return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter]);
+  }, [q, filter]);
 
   const relabel = async (p: Pin, t: CollectedType) => {
     if (p.collected_type === t) return;

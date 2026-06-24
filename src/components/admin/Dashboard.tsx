@@ -1,27 +1,11 @@
 import { useState } from 'react';
 import AddPin from './AddPin';
 import ManagePins from './ManagePins';
-import { backupNow } from '../../lib/adminApi';
 
 type Tab = 'add' | 'manage';
 
 export default function Dashboard({ onSignOut }: { onSignOut: () => void }) {
   const [tab, setTab] = useState<Tab>('add');
-  const [backingUp, setBackingUp] = useState(false);
-  const [backupMsg, setBackupMsg] = useState('');
-
-  const doBackup = async () => {
-    setBackingUp(true);
-    setBackupMsg('');
-    try {
-      const n = await backupNow();
-      setBackupMsg(`Backed up ${n} pins ✓`);
-    } catch (e) {
-      setBackupMsg(e instanceof Error ? e.message : 'Backup failed.');
-    } finally {
-      setBackingUp(false);
-    }
-  };
 
   const tabBtn = (t: Tab) =>
     `rounded-full px-4 py-1.5 text-sm font-semibold transition ${
@@ -51,10 +35,6 @@ export default function Dashboard({ onSignOut }: { onSignOut: () => void }) {
           </nav>
 
           <div className="flex items-center gap-3">
-            {backupMsg && <span className="hidden text-xs text-muted md:inline">{backupMsg}</span>}
-            <button onClick={doBackup} disabled={backingUp} className="hidden text-sm text-muted hover:text-text sm:inline">
-              {backingUp ? 'Backing up…' : 'Back up now'}
-            </button>
             <a href="/" className="hidden text-sm text-muted hover:text-text sm:inline">View site ↗</a>
             <button onClick={signOut} className="text-sm text-muted hover:text-text">Sign out</button>
           </div>

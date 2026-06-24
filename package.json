@@ -19,9 +19,11 @@
     "simple-icons": "^16.24.0"
   },
   "devDependencies": {
+    "@astrojs/sitemap": "^3.7.3",
     "@tailwindcss/vite": "^4.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "sharp": "^0.33.5",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.6.0"
   },

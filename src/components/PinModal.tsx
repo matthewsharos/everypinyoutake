@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Pin } from '../lib/pins';
+import { thumbUrl } from '../lib/pins';
 import { cleanNotes } from '../lib/notes';
 
 interface Props {
@@ -182,7 +183,7 @@ export default function PinModal({ pins }: Props) {
                     i === imgIdx ? 'border-sky ring-2 ring-sky/30' : 'border-line hover:border-sky/50'
                   }`}
                 >
-                  <img src={src} alt="" className="h-full w-full object-contain" />
+                  <img src={thumbUrl(src) ?? src} alt="" loading="lazy" decoding="async" className="h-full w-full object-contain" />
                 </button>
               ))}
             </div>

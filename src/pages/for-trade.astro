@@ -2,7 +2,7 @@
 import Base from '../layouts/Base.astro';
 import PinGrid from '../components/PinGrid.astro';
 import SortSelect from '../components/SortSelect.astro';
-import { getCollection, type Pin, type SortKey } from '../lib/pins';
+import { getCollection, pinImage, thumbUrl, type Pin, type SortKey } from '../lib/pins';
 
 const sortParam = Astro.url.searchParams.get('sort');
 const sort: SortKey = sortParam === 'updated' || sortParam === 'az' ? sortParam : 'created';
@@ -18,12 +18,14 @@ try {
   loadError = err instanceof Error ? err.message : 'Failed to load pins.';
 }
 const fmt = (n: number) => n.toLocaleString('en-US');
+const lcpImage = pins.length ? thumbUrl(pinImage(pins[0])) : null;
 ---
 
 <Base
   title="For Trade — EveryPinYouTake"
   description="Disney pins available to trade. See something you want? Let's make a deal."
 >
+  {lcpImage && <link slot="head" rel="preload" as="image" href={lcpImage} fetchpriority="high" />}
   <section class="wrap py-12">
     <header class="mb-7">
       <span class="type-tag type-trade">For Trade</span>
