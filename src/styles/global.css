@@ -8,14 +8,14 @@
  * No pink / peach / red.
  * ------------------------------------------------------------------ */
 @theme {
-  --color-ink: #fdf9f3; /* warm ivory canvas */
-  --color-ink-2: #f6efe3; /* soft insets */
+  --color-ink: #fbfbfc; /* crisp near-white canvas */
+  --color-ink-2: #f0f0f2; /* subtle insets */
   --color-surface: #ffffff; /* cards */
-  --color-surface-2: #faf3e8; /* warm tinted surface */
-  --color-line: rgba(72, 58, 38, 0.1);
+  --color-surface-2: #f7f7f9; /* faint surface */
+  --color-line: rgba(24, 26, 34, 0.1);
 
-  --color-text: #3f3a33; /* warm charcoal */
-  --color-muted: #9d958a;
+  --color-text: #2b2b33; /* clean charcoal */
+  --color-muted: #8b8b93;
 
   --color-sun: #f3c64d; /* raincoat yellow — highlights & buttons */
   --color-sky: #2f93c4; /* Stitch blue — text accents & links */
@@ -39,11 +39,7 @@
     font-family: var(--font-body);
     min-height: 100dvh;
     /* sunny + sky glows (no pink) */
-    background-image:
-      radial-gradient(56rem 38rem at 8% -10%, rgba(243, 198, 77, 0.2), transparent 60%),
-      radial-gradient(46rem 32rem at 102% -4%, rgba(47, 147, 196, 0.13), transparent 55%),
-      radial-gradient(70rem 48rem at 50% 122%, rgba(243, 198, 77, 0.1), transparent 60%);
-    background-attachment: fixed;
+    background-image: none;
   }
 
   ::selection {
@@ -65,11 +61,11 @@
   ::-webkit-scrollbar { width: 11px; height: 11px; }
   ::-webkit-scrollbar-track { background: var(--color-ink-2); }
   ::-webkit-scrollbar-thumb {
-    background: #ece1cf;
+    background: #d6d6dc;
     border-radius: 99px;
     border: 3px solid var(--color-ink-2);
   }
-  ::-webkit-scrollbar-thumb:hover { background: #ddcfb6; }
+  ::-webkit-scrollbar-thumb:hover { background: #c4c4cc; }
 }
 
 @layer components {
@@ -128,7 +124,7 @@
     display: grid;
     place-items: center;
     padding: 1.1rem;
-    background: linear-gradient(180deg, #ffffff, #fbf5ec);
+    background: linear-gradient(180deg, #ffffff, #f7f7f9);
     box-shadow: inset 0 0 0 1px rgba(72, 58, 38, 0.03);
   }
   .pin-shot img {
