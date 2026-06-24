@@ -1,0 +1,48 @@
+---
+import SocialLinks from './SocialLinks.astro';
+const path = Astro.url.pathname;
+const nav = [
+  { href: '/', label: 'Collection' },
+  { href: '/iso', label: 'ISO' },
+  { href: '/for-trade', label: 'For Trade' },
+  { href: '/about', label: 'About' },
+];
+const isCurrent = (href: string) =>
+  href === '/' ? path === '/' : path.startsWith(href);
+---
+
+<header class="sticky top-0 z-50 border-b border-line bg-ink/80 backdrop-blur-xl">
+  <div class="wrap flex h-16 items-center justify-between gap-6">
+    <a href="/" class="flex items-center gap-2.5 shrink-0" aria-label="EveryPinYouTake home">
+      <img
+        src="/favicon.png"
+        alt="EveryPinYouTake — Stitch in a raincoat"
+        width="38"
+        height="38"
+        class="h-9 w-9 rounded-full bg-white object-contain p-0.5 shadow-sm ring-1 ring-black/5"
+      />
+      <span class="font-display text-xl font-semibold tracking-tight">
+        Every<span class="text-sky">Pin</span>YouTake
+      </span>
+    </a>
+
+    <nav class="hidden items-center gap-7 sm:flex">
+      {nav.map((n) => (
+        <a href={n.href} class="nav-link" aria-current={isCurrent(n.href) ? 'page' : undefined}>
+          {n.label}
+        </a>
+      ))}
+    </nav>
+
+    <SocialLinks class="-mr-1.5" />
+  </div>
+
+  <!-- compact mobile nav -->
+  <nav class="wrap flex items-center gap-5 overflow-x-auto pb-2.5 sm:hidden">
+    {nav.map((n) => (
+      <a href={n.href} class="nav-link whitespace-nowrap text-sm" aria-current={isCurrent(n.href) ? 'page' : undefined}>
+        {n.label}
+      </a>
+    ))}
+  </nav>
+</header>

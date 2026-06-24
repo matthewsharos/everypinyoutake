@@ -1,0 +1,30 @@
+---
+import Base from '../layouts/Base.astro';
+
+// Static content page — prerendered at build time.
+export const prerender = true;
+---
+
+<Base title="About — EveryPinYouTake" description="About the EveryPinYouTake Disney pin collection.">
+  <section class="wrap max-w-2xl py-16">
+    <h1 class="text-3xl font-bold sm:text-4xl">About</h1>
+    <div class="mt-6 space-y-4 text-muted leading-relaxed">
+      <p>
+        <span class="font-semibold text-text">EveryPinYouTake</span> is a Disney pin collection —
+        a growing gallery of pins, the ones I'm still searching for, and the ones I have available to trade.
+      </p>
+      <p>
+        Follow along on
+        <a href="https://www.tiktok.com/@everypinyoutake2" target="_blank" rel="noopener noreferrer" class="text-sky hover:underline">TikTok</a>
+        and <a href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" class="text-sky hover:underline">Instagram</a>
+        for new finds, and check <a href="https://www.pinpics.com/" target="_blank" rel="noopener noreferrer" class="text-sky hover:underline">PinPics</a>
+        for pin references.
+      </p>
+    </div>
+
+    <div class="mt-10 flex flex-wrap gap-3">
+      <a href="/" class="btn btn-primary">Browse the collection</a>
+      <a href="/for-trade" class="btn btn-ghost">See what's for trade</a>
+    </div>
+  </section>
+</Base>

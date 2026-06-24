@@ -1,0 +1,41 @@
+---
+import Base from '../layouts/Base.astro';
+import PinGrid from '../components/PinGrid.astro';
+import { getCollection, type Pin } from '../lib/pins';
+
+let pins: Pin[] = [];
+let total = 0;
+let loadError = '';
+try {
+  const r = await getCollection({ type: 'For Trade', limit: 120 });
+  pins = r.pins;
+  total = r.total;
+} catch (err) {
+  loadError = err instanceof Error ? err.message : 'Failed to load pins.';
+}
+const fmt = (n: number) => n.toLocaleString('en-US');
+---
+
+<Base
+  title="For Trade — EveryPinYouTake"
+  description="Disney pins available to trade. See something you want? Let's make a deal."
+>
+  <section class="wrap py-12">
+    <header class="mb-7">
+      <span class="type-tag type-trade">For Trade</span>
+      <h1 class="mt-3 text-3xl font-bold sm:text-4xl">Available to trade</h1>
+      <p class="mt-2 max-w-xl text-muted">
+        {fmt(total)} {total === 1 ? 'pin' : 'pins'} up for trade. See something you want? Reach out on
+        <a href="https://www.tiktok.com/@everypinyoutake2" class="text-sky hover:underline">TikTok</a>.
+      </p>
+    </header>
+
+    {loadError ? (
+      <div class="rounded-2xl border border-magenta/40 bg-magenta/5 p-6 text-sm text-magenta">
+        Couldn't load pins: {loadError}
+      </div>
+    ) : (
+      <PinGrid pins={pins} empty="Nothing up for trade right now." />
+    )}
+  </section>
+</Base>

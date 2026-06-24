@@ -1,0 +1,24 @@
+---
+import type { Pin } from '../lib/pins';
+import PinCard from './PinCard.astro';
+import PinModal from './PinModal.tsx';
+
+interface Props {
+  pins: Pin[];
+  empty?: string;
+}
+const { pins, empty = 'No pins to show yet.' } = Astro.props;
+---
+
+{pins.length === 0 ? (
+  <div class="grid place-items-center rounded-2xl border border-dashed border-line py-20 text-center">
+    <p class="text-muted">{empty}</p>
+  </div>
+) : (
+  <Fragment>
+    <div class="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+      {pins.map((pin, i) => <PinCard pin={pin} index={i} />)}
+    </div>
+    <PinModal pins={pins} client:load />
+  </Fragment>
+)}

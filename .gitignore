@@ -1,0 +1,21 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+.astro/
+
+# cloudflare
+.wrangler/
+
+# env (anon key is public, but keep local config out of git)
+.env
+.env.*
+!.env.example
+
+# local tooling / editor
+.claude/
+.DS_Store
+*.log
+npm-debug.log*
+pnpm-debug.log*

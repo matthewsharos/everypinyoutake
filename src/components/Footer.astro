@@ -1,0 +1,14 @@
+---
+import SocialLinks from './SocialLinks.astro';
+const year = new Date().getFullYear();
+---
+
+<footer class="mt-24 border-t border-line">
+  <div class="wrap flex flex-col items-center justify-between gap-4 py-10 sm:flex-row">
+    <p class="text-sm text-muted">
+      <span class="font-display font-semibold text-text">EveryPinYouTake</span>
+      — a Disney pin collection. © {year}
+    </p>
+    <SocialLinks />
+  </div>
+</footer>

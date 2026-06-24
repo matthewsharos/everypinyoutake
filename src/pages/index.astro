@@ -1,0 +1,75 @@
+---
+import Base from '../layouts/Base.astro';
+import PinGrid from '../components/PinGrid.astro';
+import { getCollection, getStats, type Pin } from '../lib/pins';
+
+const q = (Astro.url.searchParams.get('q') ?? '').trim();
+
+let pins: Pin[] = [];
+let total = 0;
+let stats = { total: 0, collected: 0, forTrade: 0, iso: 0 };
+let loadError = '';
+
+try {
+  const [collection, s] = await Promise.all([
+    getCollection({ search: q || undefined, limit: 60 }),
+    getStats(),
+  ]);
+  pins = collection.pins;
+  total = collection.total;
+  stats = s;
+} catch (err) {
+  loadError = err instanceof Error ? err.message : 'Failed to load pins.';
+}
+
+const fmt = (n: number) => n.toLocaleString('en-US');
+---
+
+<Base>
+  <section class="wrap pt-7 pb-16">
+    <!-- search-first: drop straight into the collection -->
+    <form method="get" action="/" id="search" class="relative mx-auto max-w-2xl">
+      <svg
+        class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted"
+        width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"
+      >
+        <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" />
+        <path d="M21 21l-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+      </svg>
+      <input
+        type="search"
+        name="q"
+        value={q}
+        enterkeyhint="search"
+        placeholder={`Search ${fmt(stats.total || total)} pins — name, series, origin, edition…`}
+        class="w-full rounded-full border border-line bg-white py-3.5 pl-12 pr-[6.5rem] text-base shadow-sm outline-none transition-colors placeholder:text-muted focus:border-sky/70"
+      />
+      <button type="submit" class="btn btn-primary absolute right-1.5 top-1/2 -translate-y-1/2">
+        Search
+      </button>
+    </form>
+
+    <!-- collection header -->
+    <div class="mb-5 mt-8 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+      <h1 class="text-xl font-semibold sm:text-2xl">
+        {q ? 'Search results' : 'The Collection'}
+      </h1>
+      <p class="text-sm text-muted">
+        {q
+          ? `${fmt(pins.length)}${pins.length >= 60 ? '+' : ''} ${pins.length === 1 ? 'result' : 'results'} for “${q}”`
+          : `${fmt(stats.total)} pins · ${fmt(stats.forTrade)} for trade · ${fmt(stats.iso)} ISO`}
+        {q && (
+          <a href="/" class="ml-2 text-sky hover:underline">clear</a>
+        )}
+      </p>
+    </div>
+
+    {loadError ? (
+      <div class="rounded-2xl border border-magenta/40 bg-magenta/5 p-6 text-sm text-magenta">
+        Couldn't load pins: {loadError}
+      </div>
+    ) : (
+      <PinGrid pins={pins} empty={q ? `No pins match “${q}”.` : 'No pins yet.'} />
+    )}
+  </section>
+</Base>

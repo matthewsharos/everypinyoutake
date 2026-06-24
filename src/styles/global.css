@@ -1,0 +1,225 @@
+@import 'tailwindcss';
+
+/* ------------------------------------------------------------------ *
+ * EveryPinYouTake — soft, light "rainy-day gallery"
+ * Warm ivory canvas. Accents pulled from the Stitch-raincoat pin:
+ * raincoat YELLOW (sun) for highlights/buttons, Stitch BLUE (sky) for
+ * text accents & links. Elegant Fraunces headings, Nunito Sans body.
+ * No pink / peach / red.
+ * ------------------------------------------------------------------ */
+@theme {
+  --color-ink: #fdf9f3; /* warm ivory canvas */
+  --color-ink-2: #f6efe3; /* soft insets */
+  --color-surface: #ffffff; /* cards */
+  --color-surface-2: #faf3e8; /* warm tinted surface */
+  --color-line: rgba(72, 58, 38, 0.1);
+
+  --color-text: #3f3a33; /* warm charcoal */
+  --color-muted: #9d958a;
+
+  --color-sun: #f3c64d; /* raincoat yellow — highlights & buttons */
+  --color-sky: #2f93c4; /* Stitch blue — text accents & links */
+  --color-magenta: #c4763e; /* warm clay — error states only */
+
+  --font-display: 'Fraunces', ui-serif, Georgia, serif;
+  --font-body: 'Nunito Sans', ui-sans-serif, system-ui, sans-serif;
+
+  --radius-card: 22px;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-ink);
+    color: var(--color-text);
+    font-family: var(--font-body);
+    min-height: 100dvh;
+    /* sunny + sky glows (no pink) */
+    background-image:
+      radial-gradient(56rem 38rem at 8% -10%, rgba(243, 198, 77, 0.2), transparent 60%),
+      radial-gradient(46rem 32rem at 102% -4%, rgba(47, 147, 196, 0.13), transparent 55%),
+      radial-gradient(70rem 48rem at 50% 122%, rgba(243, 198, 77, 0.1), transparent 60%);
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    background: var(--color-sun);
+    color: #3a3320;
+  }
+
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: -0.005em;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  ::-webkit-scrollbar { width: 11px; height: 11px; }
+  ::-webkit-scrollbar-track { background: var(--color-ink-2); }
+  ::-webkit-scrollbar-thumb {
+    background: #ece1cf;
+    border-radius: 99px;
+    border: 3px solid var(--color-ink-2);
+  }
+  ::-webkit-scrollbar-thumb:hover { background: #ddcfb6; }
+}
+
+@layer components {
+  .wrap {
+    width: 100%;
+    max-width: 80rem;
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+  }
+
+  /* ---- buttons ---- */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: 999px;
+    padding: 0.62rem 1.15rem;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.18s ease;
+    border: 1px solid transparent;
+  }
+  .btn-primary {
+    background: var(--color-sun);
+    color: #4a3a0c; /* dark amber text on yellow */
+    box-shadow: 0 8px 20px -10px rgba(243, 198, 77, 0.95);
+  }
+  .btn-primary:hover { filter: brightness(1.04); transform: translateY(-1px); }
+  .btn-ghost {
+    border-color: var(--color-line);
+    color: var(--color-text);
+    background: rgba(255, 255, 255, 0.6);
+  }
+  .btn-ghost:hover { border-color: var(--color-sky); color: var(--color-sky); }
+
+  /* ---- pin card ---- */
+  .pin-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(72, 58, 38, 0.04);
+    transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+  }
+  .pin-card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(243, 198, 77, 0.7);
+    box-shadow: 0 20px 40px -22px rgba(150, 120, 55, 0.4);
+  }
+  .pin-shot {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    display: grid;
+    place-items: center;
+    padding: 1.1rem;
+    background: linear-gradient(180deg, #ffffff, #fbf5ec);
+    box-shadow: inset 0 0 0 1px rgba(72, 58, 38, 0.03);
+  }
+  .pin-shot img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 8px 14px rgba(110, 95, 70, 0.16));
+    transition: transform 0.25s ease;
+  }
+  .pin-card:hover .pin-shot img { transform: scale(1.04) rotate(-1.5deg); }
+  .pin-shot--empty {
+    color: #ddd2bf;
+    font-family: var(--font-display);
+    font-size: 2rem;
+  }
+
+  /* ---- chips (deeper tones for contrast on white) ---- */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    padding: 0.18rem 0.45rem;
+    border-radius: 7px;
+    border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+    background: color-mix(in srgb, currentColor 9%, transparent);
+    line-height: 1;
+  }
+  .chip-le { color: #b07d12; }      /* amber */
+  .chip-ap { color: #2f9e8b; }      /* teal */
+  .chip-pp { color: #2f8fc0; }      /* blue */
+  .chip-mystery { color: #5b62c4; } /* indigo */
+
+  .type-tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+  }
+  .type-collected { background: rgba(47, 158, 139, 0.18); color: #2f8f7c; }
+  .type-trade { background: rgba(243, 198, 77, 0.24); color: #9a7415; }
+  .type-iso { background: rgba(47, 147, 196, 0.16); color: #2f8fc0; }
+
+  /* ---- nav ---- */
+  .nav-link {
+    position: relative;
+    font-weight: 600;
+    color: var(--color-muted);
+    padding: 0.35rem 0;
+    transition: color 0.15s ease;
+  }
+  .nav-link:hover, .nav-link[aria-current='page'] { color: var(--color-text); }
+  .nav-link[aria-current='page']::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; bottom: -2px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--color-sky);
+  }
+}
+
+@layer components {
+  .modal-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 20;
+    display: grid;
+    place-items: center;
+    height: 2.75rem;
+    width: 2.75rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.86);
+    color: var(--color-text);
+    box-shadow: 0 8px 22px -8px rgba(60, 45, 25, 0.45);
+    font-size: 1.6rem;
+    line-height: 1;
+    backdrop-filter: blur(4px);
+    transition: background 0.15s ease, transform 0.15s ease;
+  }
+  .modal-nav:hover { background: #fff; transform: translateY(-50%) scale(1.05); }
+}
+
+@layer utilities {
+  .text-muted { color: var(--color-muted); }
+  .border-line { border-color: var(--color-line); }
+}

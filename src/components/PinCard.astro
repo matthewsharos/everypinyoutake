@@ -1,0 +1,55 @@
+---
+import type { Pin } from '../lib/pins';
+import { pinImage } from '../lib/pins';
+
+interface Props {
+  pin: Pin;
+  index?: number;
+}
+const { pin, index } = Astro.props;
+const img = pinImage(pin);
+
+const flags = [
+  pin.is_limited_edition && { cls: 'chip-le', label: 'LE' },
+  pin.is_ap && { cls: 'chip-ap', label: 'AP' },
+  pin.is_pp && { cls: 'chip-pp', label: 'PP' },
+  pin.is_mystery && { cls: 'chip-mystery', label: 'Mystery' },
+].filter(Boolean) as { cls: string; label: string }[];
+
+const meta = [pin.origin, pin.year ? String(pin.year) : null].filter(Boolean).join(' · ');
+---
+
+<article
+  class="pin-card cursor-pointer"
+  data-pin-index={index}
+  role="button"
+  tabindex="0"
+  aria-label={`View details for ${pin.pin_name}`}
+>
+  <div class="pin-shot">
+    {pin.edition && (
+      <span class="absolute right-2.5 top-2.5 z-10 rounded-md bg-white/85 px-1.5 py-0.5 text-[0.66rem] font-bold text-text shadow-sm ring-1 ring-black/5 backdrop-blur-sm">
+        {pin.edition}
+      </span>
+    )}
+    {img ? (
+      <img src={img} alt={pin.pin_name} loading="lazy" decoding="async" />
+    ) : (
+      <span class="pin-shot--empty" aria-hidden="true">⬡</span>
+    )}
+  </div>
+
+  <div class="flex flex-1 flex-col gap-2 p-3.5">
+    <h3 class="line-clamp-2 font-body text-sm font-semibold leading-snug">{pin.pin_name}</h3>
+    {pin.series && <p class="line-clamp-1 text-xs text-muted">{pin.series}</p>}
+
+    <div class="mt-auto flex flex-col gap-2 pt-1">
+      {meta && <p class="text-[0.7rem] text-muted">{meta}</p>}
+      {flags.length > 0 && (
+        <div class="flex flex-wrap gap-1.5">
+          {flags.map((f) => <span class={`chip ${f.cls}`}>{f.label}</span>)}
+        </div>
+      )}
+    </div>
+  </div>
+</article>

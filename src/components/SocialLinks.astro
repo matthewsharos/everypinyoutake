@@ -1,0 +1,45 @@
+---
+import { siInstagram, siTiktok } from 'simple-icons';
+
+// EveryPinYouTake accounts. Instagram + TikTok confirmed from the original site; Mercari from the owner.
+const MERCARI_URL = 'https://www.mercari.com/u/breannerae/';
+
+const links = [
+  { name: 'Instagram', href: 'https://www.instagram.com/everypinyoutake', path: siInstagram.path },
+  { name: 'TikTok', href: 'https://www.tiktok.com/@everypinyoutake2', path: siTiktok.path },
+  { name: 'Mercari', href: MERCARI_URL, mercari: true },
+];
+
+interface Props {
+  class?: string;
+}
+const { class: cls = '' } = Astro.props;
+---
+
+<div class={`flex items-center gap-0.5 ${cls}`}>
+  {links.map((s) => (
+    <a
+      href={s.href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={s.name}
+      title={s.name}
+      class="grid h-9 w-9 place-items-center rounded-full text-muted transition-colors hover:bg-white/80 hover:text-text"
+    >
+      {s.mercari ? (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <rect x="2.5" y="2.5" width="19" height="19" rx="5.5" />
+          <path
+            d="M6.6 16.5v-6c0-1.4 1-2.5 2.45-2.5s2.45 1.1 2.45 2.5v6 M11.5 10.5c0-1.4 1-2.5 2.45-2.5s2.45 1.1 2.45 2.5v6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      ) : (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" role="img" aria-hidden="true">
+          <path d={s.path} />
+        </svg>
+      )}
+    </a>
+  ))}
+</div>
