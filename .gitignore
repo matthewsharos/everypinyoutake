@@ -8,6 +8,9 @@ dist/
 # cloudflare
 .wrangler/
 
+# supabase cli link metadata
+supabase/.temp/
+
 # env (anon key is public, but keep local config out of git)
 .env
 .env.*

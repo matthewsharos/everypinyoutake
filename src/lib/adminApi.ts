@@ -31,22 +31,52 @@ function orFilter(q: string): string | null {
   return s ? SEARCH_FIELDS.map((f) => `${f}.ilike.%${s}%`).join(',') : null;
 }
 
+function normalizeExternalId(id: string | null | undefined): string | null {
+  const normalized = String(id ?? '').trim().replace(/^0+/, '');
+  return normalized || null;
+}
+
+async function existingExternalIds(): Promise<Set<string>> {
+  const ids = new Set<string>();
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await sb
+      .from('pins')
+      .select('external_pin_id')
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    for (const row of data ?? []) {
+      const id = normalizeExternalId(row.external_pin_id);
+      if (id) ids.add(id);
+    }
+    if (!data || data.length < pageSize) break;
+  }
+  return ids;
+}
+
+async function onlyAddableArchivePins(rows: Pin[]): Promise<Pin[]> {
+  const ids = await existingExternalIds();
+  return rows.filter((p) => {
+    const id = normalizeExternalId(p.external_pin_id);
+    return !id || !ids.has(id);
+  });
+}
+
 // ---- Reads (public anon client) -------------------------------------------
 
 /** Search the reference catalog (admin-only) to add pins from. */
 export async function searchArchive(q: string, limit = 40): Promise<Pin[]> {
   const s = q.trim();
-  if (s) {
-    const { data, error } = await sb.rpc('search_archive', { q: s, p_limit: limit, p_offset: 0 });
-    if (!error && Array.isArray(data)) return data as Pin[];
-  }
+  const { data: rpcData, error: rpcError } = await sb.rpc('search_archive', { q: s, p_limit: limit, p_offset: 0 });
+  if (!rpcError && Array.isArray(rpcData)) return rpcData as Pin[];
+
   let query = sb.from('pin_archive').select(SELECT).limit(limit);
   const f = orFilter(s);
   if (f) query = query.or(f);
   else query = query.order('updated_at', { ascending: false });
   const { data, error } = await query;
   if (error) throw error;
-  return (data ?? []) as Pin[];
+  return onlyAddableArchivePins((data ?? []) as Pin[]);
 }
 
 /** Search the live collection (the displayed `pins`). */

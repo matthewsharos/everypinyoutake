@@ -37,10 +37,17 @@ returns setof public.pins language sql stable as $$
 $$;
 
 -- Ranked, typo-tolerant search over the archive catalog (admin add-from-archive).
+-- Excludes pins already present in the live collection by normalized PinPics ID.
 create or replace function public.search_archive(q text, p_limit int default 40, p_offset int default 0)
 returns setof public.pin_archive language sql stable as $$
   select p.* from public.pin_archive p
   where (q = '' or p.fts @@ websearch_to_tsquery('english', q) or p.pin_name % q)
+    and not exists (
+      select 1
+      from public.pins existing
+      where nullif(regexp_replace(trim(coalesce(existing.external_pin_id, '')), '^0+', ''), '')
+        = nullif(regexp_replace(trim(coalesce(p.external_pin_id, '')), '^0+', ''), '')
+    )
   order by
     (case when q = '' then 0
           else ts_rank(p.fts, websearch_to_tsquery('english', q)) + similarity(p.pin_name, q) end) desc,

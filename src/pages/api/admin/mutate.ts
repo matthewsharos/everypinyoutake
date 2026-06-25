@@ -31,6 +31,25 @@ function copyFields(p: any) {
   };
 }
 
+function normalizeExternalId(id: unknown): string | null {
+  const normalized = String(id ?? '').trim().replace(/^0+/, '');
+  return normalized || null;
+}
+
+async function findExistingPinByExternalId(sb: ReturnType<typeof serviceClient>, externalId: string) {
+  const pageSize = 1000;
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await sb
+      .from('pins')
+      .select('id,pin_name,external_pin_id')
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    const match = (data ?? []).find((pin) => normalizeExternalId(pin.external_pin_id) === externalId);
+    if (match) return match;
+    if (!data || data.length < pageSize) return null;
+  }
+}
+
 export const POST: APIRoute = async ({ request, cookies }) => {
   if (!(await isAuthed(cookies.get(COOKIE)?.value))) return json({ error: 'Not authorized.' }, 401);
   if (!hasServiceKey()) return json({ error: 'Saving is not enabled yet (set SUPABASE_SERVICE_ROLE_KEY).' }, 503);
@@ -47,6 +66,13 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     switch (body.op) {
       case 'addFromArchive': {
         const row = { ...copyFields(body.pin), collected_type: body.type };
+        const externalId = normalizeExternalId(row.external_pin_id);
+        if (externalId) {
+          const existing = await findExistingPinByExternalId(sb, externalId);
+          if (existing) {
+            return json({ error: `Already in the collection: ${existing.pin_name}` }, 409);
+          }
+        }
         const { data, error } = await sb.from('pins').insert(row).select(SELECT).single();
         if (error) throw error;
         return json({ pin: data });
