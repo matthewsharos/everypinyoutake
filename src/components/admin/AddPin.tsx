@@ -154,18 +154,6 @@ export default function AddPin() {
 
       {mode === 'archive' ? (
         <div>
-          <section className="mb-8">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="font-display text-xl font-semibold">Newest PinPics</h2>
-              {recentLoading && <span className="text-sm text-muted">Loading…</span>}
-            </div>
-            {recent.length > 0 && (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {recent.map(pinResult)}
-              </div>
-            )}
-          </section>
-
           <form onSubmit={runSearch} className="mb-4 flex flex-wrap items-center gap-3">
             <input
               className="min-w-60 flex-1 rounded-full border border-line bg-white px-4 py-2.5 text-sm outline-none focus:border-sky/70"
@@ -192,6 +180,18 @@ export default function AddPin() {
               </button>
             ))}
           </div>
+
+          <section className="mb-8">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="font-display text-xl font-semibold">Newest PinPics</h2>
+              {recentLoading && <span className="text-sm text-muted">Loading…</span>}
+            </div>
+            {recent.length > 0 && (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {recent.map(pinResult)}
+              </div>
+            )}
+          </section>
 
           {searched && !loading && results.length === 0 && (
             <p className="text-muted">No archive pins match “{q}”.</p>
