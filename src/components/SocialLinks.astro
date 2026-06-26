@@ -12,8 +12,9 @@ const links = [
 
 interface Props {
   class?: string;
+  includeAdmin?: boolean;
 }
-const { class: cls = '' } = Astro.props;
+const { class: cls = '', includeAdmin = false } = Astro.props;
 ---
 
 <div class={`flex items-center gap-0.5 ${cls}`}>
@@ -42,4 +43,17 @@ const { class: cls = '' } = Astro.props;
       )}
     </a>
   ))}
+  {includeAdmin && (
+    <a
+      href="/admin"
+      aria-label="Admin"
+      title="Admin"
+      class="grid h-9 w-9 place-items-center rounded-full text-muted transition-colors hover:bg-white/80 hover:text-text"
+    >
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="5" y="11" width="14" height="10" rx="2" />
+        <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+      </svg>
+    </a>
+  )}
 </div>
