@@ -62,6 +62,13 @@ async function archivePinById(sb: ReturnType<typeof serviceClient>, id: unknown)
   return data;
 }
 
+async function markArchiveSiteFlags(sb: ReturnType<typeof serviceClient>, pinId: unknown) {
+  const id = Number(pinId);
+  if (!Number.isFinite(id)) return;
+  const { error } = await sb.rpc('mark_pin_archive_site_flags_for_pin', { p_pin_id: id });
+  if (error) console.warn(`Archive duplicate flag refresh failed for pin ${id}: ${error.message}`);
+}
+
 export const POST: APIRoute = async ({ request, cookies }) => {
   if (!(await isAuthed(cookies.get(COOKIE)?.value))) return json({ error: 'Not authorized.' }, 401);
   if (!hasServiceKey()) return json({ error: 'Saving is not enabled yet (set SUPABASE_SERVICE_ROLE_KEY).' }, 503);
@@ -89,16 +96,19 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         }
         const { data, error } = await sb.from('pins').insert(row).select(SELECT).single();
         if (error) throw error;
+        await markArchiveSiteFlags(sb, data.id);
         return json({ pin: data });
       }
       case 'addManual': {
         const { data, error } = await sb.from('pins').insert(body.input).select(SELECT).single();
         if (error) throw error;
+        await markArchiveSiteFlags(sb, data.id);
         return json({ pin: data });
       }
       case 'update': {
         const { data, error } = await sb.from('pins').update(body.patch).eq('id', body.id).select(SELECT).single();
         if (error) throw error;
+        await markArchiveSiteFlags(sb, data.id);
         return json({ pin: data });
       }
       case 'setType': {
@@ -112,6 +122,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         await sb.from('pins_backup').insert({ kind: 'removed', pin_count: 1, data: [p] });
         const { error } = await sb.from('pins').delete().eq('id', p.id);
         if (error) throw error;
+        await markArchiveSiteFlags(sb, p.id);
         return json({ ok: true });
       }
       case 'backup': {
