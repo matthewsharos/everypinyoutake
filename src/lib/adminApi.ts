@@ -34,37 +34,6 @@ function orFilter(q: string): string | null {
   return s ? SEARCH_FIELDS.map((f) => `${f}.ilike.%${s}%`).join(',') : null;
 }
 
-function normalizeExternalId(id: string | null | undefined): string | null {
-  const normalized = String(id ?? '').trim().replace(/^0+/, '');
-  return normalized || null;
-}
-
-async function existingExternalIds(): Promise<Set<string>> {
-  const ids = new Set<string>();
-  const pageSize = 1000;
-  for (let from = 0; ; from += pageSize) {
-    const { data, error } = await sb
-      .from('pins')
-      .select('external_pin_id')
-      .range(from, from + pageSize - 1);
-    if (error) throw error;
-    for (const row of data ?? []) {
-      const id = normalizeExternalId(row.external_pin_id);
-      if (id) ids.add(id);
-    }
-    if (!data || data.length < pageSize) break;
-  }
-  return ids;
-}
-
-async function onlyAddableArchivePins(rows: Pin[]): Promise<Pin[]> {
-  const ids = await existingExternalIds();
-  return rows.filter((p) => {
-    const id = normalizeExternalId(p.external_pin_id);
-    return !id || !ids.has(id);
-  });
-}
-
 // ---- Reads (public anon client) -------------------------------------------
 
 /** Search the reference catalog (admin-only) to add pins from. */
@@ -75,13 +44,17 @@ export async function searchArchive(q: string, limit = 90, offset = 0): Promise<
     .select(CARD_SELECT);
   if (!rpcError && Array.isArray(rpcData)) return rpcData as Pin[];
 
-  let query = sb.from('pin_archive').select(CARD_SELECT).range(offset, offset + limit - 1);
+  let query = sb
+    .from('pin_archive')
+    .select(CARD_SELECT)
+    .eq('already_on_site', false)
+    .range(offset, offset + limit - 1);
   const f = orFilter(s);
   if (f) query = query.or(f);
   else query = query.order('updated_at', { ascending: false });
   const { data, error } = await query;
   if (error) throw error;
-  return onlyAddableArchivePins((data ?? []) as Pin[]);
+  return (data ?? []) as Pin[];
 }
 
 /** Newest addable PinPics archive rows for the admin landing view. */
@@ -94,10 +67,11 @@ export async function recentArchivePins(limit = 18): Promise<Pin[]> {
   const { data, error } = await sb
     .from('pin_archive')
     .select(CARD_SELECT)
+    .eq('already_on_site', false)
     .order('id', { ascending: false })
     .limit(limit);
   if (error) throw error;
-  return onlyAddableArchivePins((data ?? []) as Pin[]);
+  return (data ?? []) as Pin[];
 }
 
 /** Search the live collection (the displayed `pins`). */

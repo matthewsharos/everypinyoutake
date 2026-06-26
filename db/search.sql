@@ -38,6 +38,11 @@ returns text language sql immutable as $$
   select nullif(regexp_replace(trim(coalesce(id, '')), '^0+', ''), '');
 $$;
 
+create index if not exists archive_recent_addable_pinpics_idx
+  on public.pin_archive ((public.epyt_norm_external_id(external_pin_id)::bigint) desc)
+  where already_on_site = false
+    and public.epyt_norm_external_id(external_pin_id) ~ '^[0-9]+$';
+
 create or replace function public.epyt_pinpics_url_id(url text)
 returns text language sql immutable as $$
   select public.epyt_norm_external_id(substring(coalesce(url, '') from 'pinpics\.com/pin/([0-9]+)'));
@@ -364,25 +369,121 @@ $$;
 -- Ranked, typo-tolerant search over the archive catalog (admin add-from-archive).
 -- Excludes pins already present in the live collection by durable archive flag.
 -- The write path still has a normalized-ID duplicate guard as a final backstop.
+drop function if exists public.search_archive(text, int, int);
 create or replace function public.search_archive(q text, p_limit int default 40, p_offset int default 0)
-returns setof public.pin_archive language sql stable as $$
-  select p.* from public.pin_archive p
-  where (q = '' or p.fts @@ websearch_to_tsquery('english', q) or p.pin_name % q)
-    and not p.already_on_site
-  order by
-    (case when q = '' then 0
-          else ts_rank(p.fts, websearch_to_tsquery('english', q)) + similarity(p.pin_name, q) end) desc,
-    p.updated_at desc nulls last
-  limit greatest(p_limit, 1) offset greatest(p_offset, 0);
+returns table (
+  id bigint,
+  pin_name text,
+  image_url text,
+  image_url2 text,
+  image_url3 text,
+  year integer,
+  series text,
+  origin text,
+  edition text,
+  external_url text,
+  external_pin_id text,
+  is_limited_edition boolean,
+  is_mystery boolean,
+  is_ap boolean,
+  is_pp boolean,
+  created_at timestamptz
+) language plpgsql stable as $$
+declare
+  v_q text := trim(coalesce(q, ''));
+  v_limit integer := least(greatest(coalesce(p_limit, 40), 1), 500);
+  v_offset integer := greatest(coalesce(p_offset, 0), 0);
+  v_ts tsquery;
+  v_fts_count integer := 0;
+  v_returned integer := 0;
+begin
+  if v_q = '' then
+    return query
+      select
+        p.id, p.pin_name, p.image_url, p.image_url2, p.image_url3, p.year, p.series,
+        p.origin, p.edition, p.external_url, p.external_pin_id, p.is_limited_edition,
+        p.is_mystery, p.is_ap, p.is_pp, p.created_at
+      from public.pin_archive p
+      where not p.already_on_site
+        and public.epyt_norm_external_id(p.external_pin_id) ~ '^[0-9]+$'
+      order by public.epyt_norm_external_id(p.external_pin_id)::bigint desc
+      limit v_limit offset v_offset;
+    return;
+  end if;
+
+  v_ts := websearch_to_tsquery('english', v_q);
+
+  select count(*)::integer
+    into v_fts_count
+  from public.pin_archive p
+  where not p.already_on_site
+    and p.fts @@ v_ts;
+
+  if v_offset < v_fts_count then
+    return query
+      select
+        p.id, p.pin_name, p.image_url, p.image_url2, p.image_url3, p.year, p.series,
+        p.origin, p.edition, p.external_url, p.external_pin_id, p.is_limited_edition,
+        p.is_mystery, p.is_ap, p.is_pp, p.created_at
+      from public.pin_archive p
+      where not p.already_on_site
+        and p.fts @@ v_ts
+      order by
+        ts_rank(p.fts, v_ts) desc,
+        p.updated_at desc nulls last
+      limit v_limit offset v_offset;
+
+    get diagnostics v_returned = row_count;
+  end if;
+
+  if v_returned < v_limit then
+    return query
+      select
+        p.id, p.pin_name, p.image_url, p.image_url2, p.image_url3, p.year, p.series,
+        p.origin, p.edition, p.external_url, p.external_pin_id, p.is_limited_edition,
+        p.is_mystery, p.is_ap, p.is_pp, p.created_at
+      from public.pin_archive p
+      where not p.already_on_site
+        and p.pin_name % v_q
+        and not (p.fts @@ v_ts)
+      order by
+        similarity(p.pin_name, v_q) desc,
+        p.updated_at desc nulls last
+      limit (v_limit - v_returned)
+      offset greatest(v_offset - v_fts_count, 0);
+  end if;
+end;
 $$;
 
 -- Newest PinPics archive entries for the admin add surface.
 -- PinPics IDs are numeric strings, so cast for correct newest-first ordering.
+drop function if exists public.recent_archive_pins(int);
 create or replace function public.recent_archive_pins(p_limit int default 18)
-returns setof public.pin_archive language sql stable as $$
-  select p.* from public.pin_archive p
+returns table (
+  id bigint,
+  pin_name text,
+  image_url text,
+  image_url2 text,
+  image_url3 text,
+  year integer,
+  series text,
+  origin text,
+  edition text,
+  external_url text,
+  external_pin_id text,
+  is_limited_edition boolean,
+  is_mystery boolean,
+  is_ap boolean,
+  is_pp boolean,
+  created_at timestamptz
+) language sql stable as $$
+  select
+    p.id, p.pin_name, p.image_url, p.image_url2, p.image_url3, p.year, p.series,
+    p.origin, p.edition, p.external_url, p.external_pin_id, p.is_limited_edition,
+    p.is_mystery, p.is_ap, p.is_pp, p.created_at
+  from public.pin_archive p
   where public.epyt_norm_external_id(p.external_pin_id) ~ '^[0-9]+$'
     and not p.already_on_site
   order by public.epyt_norm_external_id(p.external_pin_id)::bigint desc
-  limit greatest(p_limit, 1);
+  limit least(greatest(coalesce(p_limit, 18), 1), 500);
 $$;
