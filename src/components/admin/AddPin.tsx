@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Pin, CollectedType } from '../../lib/pins';
 import { addFromArchive, addManual, recentArchivePins, searchArchive } from '../../lib/adminApi';
 import PinForm from './PinForm';
@@ -31,6 +31,7 @@ function fallbackToFullImage(e: React.SyntheticEvent<HTMLImageElement>) {
 
 export default function AddPin() {
   const [mode, setMode] = useState<'archive' | 'manual'>('archive');
+  const requestSeq = useRef(0);
 
   // archive
   const [q, setQ] = useState('');
@@ -39,8 +40,6 @@ export default function AddPin() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [searched, setSearched] = useState(false);
   const [hasMore, setHasMore] = useState(false);
-  const [recent, setRecent] = useState<Pin[]>([]);
-  const [recentLoading, setRecentLoading] = useState(false);
   const [addType, setAddType] = useState<CollectedType>('Collected');
   const [added, setAdded] = useState<Record<number, boolean>>({});
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -50,31 +49,43 @@ export default function AddPin() {
   const [formKey, setFormKey] = useState(0);
   const [manualMsg, setManualMsg] = useState('');
 
-  const loadRecent = async () => {
-    setRecentLoading(true);
+  const loadNewest = async () => {
+    const seq = ++requestSeq.current;
+    setErr('');
+    setLoading(true);
+    setSearched(false);
+    setHasMore(false);
     try {
-      setRecent(await recentArchivePins(RECENT_LIMIT));
+      const rows = await recentArchivePins(RECENT_LIMIT);
+      if (seq === requestSeq.current) setResults(rows);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Recent pins failed to load.');
+      if (seq === requestSeq.current) setErr(e instanceof Error ? e.message : 'Recent pins failed to load.');
     } finally {
-      setRecentLoading(false);
+      if (seq === requestSeq.current) setLoading(false);
     }
   };
 
   const runSearch = async (e?: React.FormEvent, nextQ = q) => {
     e?.preventDefault();
+    const s = nextQ.trim();
+    if (!s) {
+      await loadNewest();
+      return;
+    }
+    const seq = ++requestSeq.current;
     setErr('');
     setLoading(true);
     setSearched(true);
     setHasMore(false);
     try {
-      const rows = await searchArchive(nextQ, PAGE_SIZE + 1, 0);
+      const rows = await searchArchive(s, PAGE_SIZE + 1, 0);
+      if (seq !== requestSeq.current) return;
       setResults(rows.slice(0, PAGE_SIZE));
       setHasMore(rows.length > PAGE_SIZE);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Search failed.');
+      if (seq === requestSeq.current) setErr(e instanceof Error ? e.message : 'Search failed.');
     } finally {
-      setLoading(false);
+      if (seq === requestSeq.current) setLoading(false);
     }
   };
 
@@ -93,21 +104,21 @@ export default function AddPin() {
     }
   };
 
-  // Search-as-you-type: fire once a couple letters are in; clear when emptied.
-  useEffect(() => {
-    loadRecent();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
+  // Search-as-you-type: the one result grid defaults to newest PinPics.
   useEffect(() => {
     const v = q.trim();
     if (v.length === 0) {
+      loadNewest();
+      return;
+    }
+    if (v.length < 2) {
+      requestSeq.current += 1;
       setResults([]);
       setSearched(false);
       setHasMore(false);
+      setLoading(false);
       return;
     }
-    if (v.length < 2) return;
     const t = setTimeout(() => { runSearch(undefined, v); }, 300);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -119,7 +130,7 @@ export default function AddPin() {
     try {
       await addFromArchive(p, addType);
       setAdded((a) => ({ ...a, [p.id]: true }));
-      setRecent((rows) => rows.filter((row) => row.id !== p.id));
+      setResults((rows) => rows.filter((row) => row.id !== p.id));
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Add failed.');
     } finally {
@@ -195,7 +206,7 @@ export default function AddPin() {
               onChange={(e) => setQ(e.target.value)}
             />
             <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? 'Searching…' : 'Search'}
+              {loading ? (q.trim() ? 'Searching…' : 'Loading…') : 'Search'}
             </button>
           </form>
 
@@ -214,25 +225,13 @@ export default function AddPin() {
             ))}
           </div>
 
-          <section className="mb-8">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="font-display text-xl font-semibold">Newest PinPics</h2>
-              {recentLoading && <span className="text-sm text-muted">Loading…</span>}
-            </div>
-            {recent.length > 0 && (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {recent.map(pinResult)}
-              </div>
-            )}
-          </section>
-
           {searched && !loading && results.length === 0 && (
             <p className="text-muted">No archive pins match “{q}”.</p>
           )}
 
           {results.length > 0 && (
             <div className="mb-3 flex items-center justify-between gap-3 text-sm text-muted">
-              <span>{results.length} archive results loaded</span>
+              <span>{results.length} {searched ? 'archive results' : 'newest PinPics'} loaded</span>
               {hasMore && <span>More matches available</span>}
             </div>
           )}
