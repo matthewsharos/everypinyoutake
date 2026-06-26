@@ -65,16 +65,30 @@ async function onlyAddableArchivePins(rows: Pin[]): Promise<Pin[]> {
 // ---- Reads (public anon client) -------------------------------------------
 
 /** Search the reference catalog (admin-only) to add pins from. */
-export async function searchArchive(q: string, limit = 40): Promise<Pin[]> {
+export async function searchArchive(q: string, limit = 90, offset = 0): Promise<Pin[]> {
   const s = q.trim();
-  const { data: rpcData, error: rpcError } = await sb.rpc('search_archive', { q: s, p_limit: limit, p_offset: 0 });
+  const { data: rpcData, error: rpcError } = await sb.rpc('search_archive', { q: s, p_limit: limit, p_offset: offset });
   if (!rpcError && Array.isArray(rpcData)) return rpcData as Pin[];
 
-  let query = sb.from('pin_archive').select(SELECT).limit(limit);
+  let query = sb.from('pin_archive').select(SELECT).range(offset, offset + limit - 1);
   const f = orFilter(s);
   if (f) query = query.or(f);
   else query = query.order('updated_at', { ascending: false });
   const { data, error } = await query;
+  if (error) throw error;
+  return onlyAddableArchivePins((data ?? []) as Pin[]);
+}
+
+/** Newest addable PinPics archive rows for the admin landing view. */
+export async function recentArchivePins(limit = 18): Promise<Pin[]> {
+  const { data: rpcData, error: rpcError } = await sb.rpc('recent_archive_pins', { p_limit: limit });
+  if (!rpcError && Array.isArray(rpcData)) return rpcData as Pin[];
+
+  const { data, error } = await sb
+    .from('pin_archive')
+    .select(SELECT)
+    .order('id', { ascending: false })
+    .limit(limit);
   if (error) throw error;
   return onlyAddableArchivePins((data ?? []) as Pin[]);
 }

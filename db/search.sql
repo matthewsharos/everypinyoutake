@@ -54,3 +54,19 @@ returns setof public.pin_archive language sql stable as $$
     p.updated_at desc nulls last
   limit greatest(p_limit, 1) offset greatest(p_offset, 0);
 $$;
+
+-- Newest PinPics archive entries for the admin add surface.
+-- PinPics IDs are numeric strings, so cast for correct newest-first ordering.
+create or replace function public.recent_archive_pins(p_limit int default 18)
+returns setof public.pin_archive language sql stable as $$
+  select p.* from public.pin_archive p
+  where nullif(regexp_replace(trim(coalesce(p.external_pin_id, '')), '^0+', ''), '') ~ '^[0-9]+$'
+    and not exists (
+      select 1
+      from public.pins existing
+      where nullif(regexp_replace(trim(coalesce(existing.external_pin_id, '')), '^0+', ''), '')
+        = nullif(regexp_replace(trim(coalesce(p.external_pin_id, '')), '^0+', ''), '')
+    )
+  order by nullif(regexp_replace(trim(coalesce(p.external_pin_id, '')), '^0+', ''), '')::bigint desc
+  limit greatest(p_limit, 1);
+$$;
