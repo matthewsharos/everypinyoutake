@@ -50,6 +50,18 @@ async function findExistingPinByExternalId(sb: ReturnType<typeof serviceClient>,
   }
 }
 
+async function archivePinById(sb: ReturnType<typeof serviceClient>, id: unknown) {
+  const archiveId = Number(id);
+  if (!Number.isFinite(archiveId)) return null;
+  const { data, error } = await sb
+    .from('pin_archive')
+    .select(SELECT)
+    .eq('id', archiveId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 export const POST: APIRoute = async ({ request, cookies }) => {
   if (!(await isAuthed(cookies.get(COOKIE)?.value))) return json({ error: 'Not authorized.' }, 401);
   if (!hasServiceKey()) return json({ error: 'Saving is not enabled yet (set SUPABASE_SERVICE_ROLE_KEY).' }, 503);
@@ -65,7 +77,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   try {
     switch (body.op) {
       case 'addFromArchive': {
-        const row = { ...copyFields(body.pin), collected_type: body.type };
+        const sourcePin = await archivePinById(sb, body.archiveId);
+        if (body.archiveId && !sourcePin) return json({ error: 'Archive pin not found.' }, 404);
+        const row = { ...copyFields(sourcePin ?? body.pin), collected_type: body.type };
         const externalId = normalizeExternalId(row.external_pin_id);
         if (externalId) {
           const existing = await findExistingPinByExternalId(sb, externalId);

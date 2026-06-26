@@ -7,8 +7,26 @@ const TYPES: CollectedType[] = ['Collected', 'For Trade', 'ISO'];
 const PAGE_SIZE = 90;
 const RECENT_LIMIT = 18;
 
-function thumb(p: Pin) {
-  return p.image_url || p.image_url2 || p.image_url3 || null;
+function storageRenderThumb(url: string | null): string | null {
+  if (!url) return null;
+  const marker = '/storage/v1/object/public/';
+  const i = url.indexOf(marker);
+  if (i === -1) return url;
+  const rendered = url.slice(0, i) + '/storage/v1/render/image/public/' + url.slice(i + marker.length);
+  return `${rendered}${rendered.includes('?') ? '&' : '?'}width=180&quality=72&resize=contain`;
+}
+
+function imageFor(p: Pin) {
+  const full = p.image_url || p.image_url2 || p.image_url3 || null;
+  return { full, src: storageRenderThumb(full) };
+}
+
+function fallbackToFullImage(e: React.SyntheticEvent<HTMLImageElement>) {
+  const img = e.currentTarget;
+  const full = img.dataset.full;
+  if (!full || img.src === full) return;
+  img.dataset.full = '';
+  img.src = full;
 }
 
 export default function AddPin() {
@@ -120,28 +138,43 @@ export default function AddPin() {
       mode === m ? 'bg-sun text-[#4a3a0c]' : 'text-muted hover:text-text'
     }`;
 
-  const pinResult = (p: Pin) => (
-    <div key={p.id} className="flex gap-3 rounded-2xl border border-line bg-surface p-3">
-      <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-xl bg-white">
-        {thumb(p) ? <img src={thumb(p)!} alt="" className="h-full w-full object-contain p-1" /> : <span className="text-xl text-[#ddd2bf]">⬡</span>}
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col">
-        <p className="line-clamp-2 text-sm font-semibold">{p.pin_name}</p>
-        <p className="mt-0.5 line-clamp-1 text-xs text-muted">
-          {[p.series, p.edition, p.year].filter(Boolean).join(' · ')}
-        </p>
-        <div className="mt-auto pt-2">
-          {added[p.id] ? (
-            <span className="text-sm font-semibold text-[#2f8f7c]">Added ✓</span>
+  const pinResult = (p: Pin) => {
+    const image = imageFor(p);
+    return (
+      <div key={p.id} className="flex gap-3 rounded-2xl border border-line bg-surface p-3">
+        <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-xl bg-white">
+          {image.src ? (
+            <img
+              src={image.src}
+              data-full={image.full ?? undefined}
+              alt=""
+              className="h-full w-full object-contain p-1"
+              loading="lazy"
+              decoding="async"
+              onError={fallbackToFullImage}
+            />
           ) : (
-            <button onClick={() => add(p)} className="btn btn-ghost text-sm" disabled={busyId === p.id}>
-              {busyId === p.id ? 'Adding…' : '+ Add'}
-            </button>
+            <span className="text-xl text-[#ddd2bf]">⬡</span>
           )}
         </div>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <p className="line-clamp-2 text-sm font-semibold">{p.pin_name}</p>
+          <p className="mt-0.5 line-clamp-1 text-xs text-muted">
+            {[p.series, p.edition, p.year].filter(Boolean).join(' · ')}
+          </p>
+          <div className="mt-auto pt-2">
+            {added[p.id] ? (
+              <span className="text-sm font-semibold text-[#2f8f7c]">Added ✓</span>
+            ) : (
+              <button onClick={() => add(p)} className="btn btn-ghost text-sm" disabled={busyId === p.id}>
+                {busyId === p.id ? 'Adding…' : '+ Add'}
+              </button>
+            )}
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div>

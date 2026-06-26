@@ -4,6 +4,9 @@ import type { Pin, CollectedType } from './pins';
 const SELECT =
   'id,pin_name,image_url,image_url2,image_url3,year,series,origin,edition,tags,notes,external_url,external_pin_id,is_limited_edition,is_mystery,is_ap,is_pp,collected_type,created_at';
 
+const CARD_SELECT =
+  'id,pin_name,image_url,image_url2,image_url3,year,series,origin,edition,external_url,external_pin_id,is_limited_edition,is_mystery,is_ap,is_pp,created_at';
+
 const SEARCH_FIELDS = ['pin_name', 'series', 'origin', 'edition', 'tags', 'notes'];
 
 export interface PinInput {
@@ -67,10 +70,12 @@ async function onlyAddableArchivePins(rows: Pin[]): Promise<Pin[]> {
 /** Search the reference catalog (admin-only) to add pins from. */
 export async function searchArchive(q: string, limit = 90, offset = 0): Promise<Pin[]> {
   const s = q.trim();
-  const { data: rpcData, error: rpcError } = await sb.rpc('search_archive', { q: s, p_limit: limit, p_offset: offset });
+  const { data: rpcData, error: rpcError } = await sb
+    .rpc('search_archive', { q: s, p_limit: limit, p_offset: offset })
+    .select(CARD_SELECT);
   if (!rpcError && Array.isArray(rpcData)) return rpcData as Pin[];
 
-  let query = sb.from('pin_archive').select(SELECT).range(offset, offset + limit - 1);
+  let query = sb.from('pin_archive').select(CARD_SELECT).range(offset, offset + limit - 1);
   const f = orFilter(s);
   if (f) query = query.or(f);
   else query = query.order('updated_at', { ascending: false });
@@ -81,12 +86,14 @@ export async function searchArchive(q: string, limit = 90, offset = 0): Promise<
 
 /** Newest addable PinPics archive rows for the admin landing view. */
 export async function recentArchivePins(limit = 18): Promise<Pin[]> {
-  const { data: rpcData, error: rpcError } = await sb.rpc('recent_archive_pins', { p_limit: limit });
+  const { data: rpcData, error: rpcError } = await sb
+    .rpc('recent_archive_pins', { p_limit: limit })
+    .select(CARD_SELECT);
   if (!rpcError && Array.isArray(rpcData)) return rpcData as Pin[];
 
   const { data, error } = await sb
     .from('pin_archive')
-    .select(SELECT)
+    .select(CARD_SELECT)
     .order('id', { ascending: false })
     .limit(limit);
   if (error) throw error;
@@ -127,7 +134,7 @@ async function mutate(op: string, payload: Record<string, unknown>): Promise<any
 }
 
 export async function addFromArchive(p: Pin, type: CollectedType): Promise<Pin> {
-  return (await mutate('addFromArchive', { pin: p, type })).pin as Pin;
+  return (await mutate('addFromArchive', { archiveId: p.id, pin: p, type })).pin as Pin;
 }
 
 export async function addManual(input: PinInput): Promise<Pin> {
