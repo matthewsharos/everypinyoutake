@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Pin, CollectedType } from '../../lib/pins';
 import { addFromArchive, addManual, recentArchivePins, searchArchive } from '../../lib/adminApi';
 import PinForm from './PinForm';
+import { useToast } from './Toast';
 
 const TYPES: CollectedType[] = ['Collected', 'For Trade', 'ISO'];
 const PAGE_SIZE = 90;
@@ -30,6 +31,7 @@ function fallbackToFullImage(e: React.SyntheticEvent<HTMLImageElement>) {
 }
 
 export default function AddPin() {
+  const toast = useToast();
   const [mode, setMode] = useState<'archive' | 'manual'>('archive');
   const requestSeq = useRef(0);
 
@@ -47,7 +49,6 @@ export default function AddPin() {
 
   // manual
   const [formKey, setFormKey] = useState(0);
-  const [manualMsg, setManualMsg] = useState('');
 
   const loadNewest = async () => {
     const seq = ++requestSeq.current;
@@ -131,8 +132,11 @@ export default function AddPin() {
       await addFromArchive(p, addType);
       setAdded((a) => ({ ...a, [p.id]: true }));
       setResults((rows) => rows.filter((row) => row.id !== p.id));
+      toast.success(`“${p.pin_name}” added as ${addType}.`);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Add failed.');
+      const msg = e instanceof Error ? e.message : 'Add failed.';
+      setErr(msg);
+      toast.error(msg);
     } finally {
       setBusyId(null);
     }
@@ -140,7 +144,7 @@ export default function AddPin() {
 
   const submitManual = async (input: Parameters<typeof addManual>[0]) => {
     await addManual(input);
-    setManualMsg('Pin added to the collection. ✓');
+    toast.success(`“${input.pin_name || 'Pin'}” added to the collection.`);
     setFormKey((k) => k + 1);
   };
 
@@ -250,7 +254,6 @@ export default function AddPin() {
         </div>
       ) : (
         <div className="max-w-2xl">
-          {manualMsg && <p className="mb-4 rounded-lg bg-[#2f8f7c]/10 px-3 py-2 text-sm text-[#2f8f7c]">{manualMsg}</p>}
           <PinForm key={formKey} submitLabel="Add pin" onSubmit={submitManual} />
         </div>
       )}

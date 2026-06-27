@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import AddPin from './AddPin';
 import ManagePins from './ManagePins';
+import { ToastProvider } from './Toast';
 
 type Tab = 'add' | 'manage';
 
@@ -21,6 +22,7 @@ export default function Dashboard({ onSignOut }: { onSignOut: () => void }) {
   };
 
   return (
+    <ToastProvider>
     <div className="min-h-dvh">
       <header className="sticky top-0 z-40 border-b border-line bg-ink/85 backdrop-blur-xl">
         <div className="wrap flex h-16 items-center justify-between gap-4">
@@ -43,5 +45,6 @@ export default function Dashboard({ onSignOut }: { onSignOut: () => void }) {
 
       <main className="wrap py-8">{tab === 'add' ? <AddPin /> : <ManagePins />}</main>
     </div>
+    </ToastProvider>
   );
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Pin, CollectedType } from '../../lib/pins';
 import { removeFromCollection, searchCollection, setType, updatePin, type PinInput } from '../../lib/adminApi';
 import PinForm from './PinForm';
+import { useToast } from './Toast';
 
 const TYPES: CollectedType[] = ['Collected', 'For Trade', 'ISO'];
 
@@ -10,6 +11,7 @@ function thumb(p: Pin) {
 }
 
 export default function ManagePins() {
+  const toast = useToast();
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState<CollectedType | undefined>(undefined);
   const [rows, setRows] = useState<Pin[]>([]);
@@ -47,8 +49,11 @@ export default function ManagePins() {
     try {
       await setType(p.id, t);
       setRows((rs) => rs.map((r) => (r.id === p.id ? { ...r, collected_type: t } : r)));
+      toast.success(`“${p.pin_name}” moved to ${t}.`);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Update failed.');
+      const msg = e instanceof Error ? e.message : 'Update failed.';
+      setErr(msg);
+      toast.error(msg);
     } finally {
       setBusyId(null);
     }
@@ -61,8 +66,11 @@ export default function ManagePins() {
     try {
       await removeFromCollection(p);
       setRows((rs) => rs.filter((r) => r.id !== p.id));
+      toast.success(`“${p.pin_name}” removed from the collection.`);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Remove failed.');
+      const msg = e instanceof Error ? e.message : 'Remove failed.';
+      setErr(msg);
+      toast.error(msg);
     } finally {
       setBusyId(null);
     }
@@ -73,6 +81,7 @@ export default function ManagePins() {
     const updated = await updatePin(editing.id, input);
     setRows((rs) => rs.map((r) => (r.id === updated.id ? updated : r)));
     setEditing(null);
+    toast.success(`“${updated.pin_name}” saved.`);
   };
 
   const typeClass = (t: string | null) =>
