@@ -47,6 +47,7 @@ function AdminDockInner() {
   const [authed, setAuthed] = useState<boolean | undefined>(undefined);
   const [loginOpen, setLoginOpen] = useState(false);
   const [tool, setTool] = useState<Tool>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -97,6 +98,7 @@ function AdminDockInner() {
     } finally {
       setAuthed(false);
       setTool(null);
+      setMenuOpen(false);
       announceAdminAuth(false);
     }
   };
@@ -112,25 +114,61 @@ function AdminDockInner() {
     <>
       {authed && (
         <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2 sm:bottom-6 sm:right-6">
-          <div className="flex items-center gap-2 rounded-full border border-line bg-white/90 p-1 shadow-xl backdrop-blur">
-            <button type="button" className="btn btn-ghost px-3 py-2 text-sm" onClick={() => setTool('archive')}>
-              Search to add
-            </button>
-            <button type="button" className="btn btn-ghost px-3 py-2 text-sm" onClick={() => setTool('manual')}>
-              Manual add
-            </button>
-            <button type="button" className="px-3 py-2 text-sm font-semibold text-muted hover:text-text" onClick={signOut}>
-              Sign out
-            </button>
-          </div>
+          {menuOpen && (
+            <div className="flex flex-col items-center gap-2 rounded-full border border-line bg-white/90 p-1.5 shadow-xl backdrop-blur">
+              <button
+                type="button"
+                aria-label="Search pins to add"
+                title="Search pins to add"
+                className="grid h-11 w-11 place-items-center rounded-full text-muted transition hover:bg-ink-2 hover:text-text"
+                onClick={() => {
+                  setTool('archive');
+                  setMenuOpen(false);
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M21 21l-4.3-4.3" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                aria-label="Manually add a pin"
+                title="Manually add a pin"
+                className="grid h-11 w-11 place-items-center rounded-full text-muted transition hover:bg-ink-2 hover:text-text"
+                onClick={() => {
+                  setTool('manual');
+                  setMenuOpen(false);
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M12 5v14" />
+                  <path d="M5 12h14" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                aria-label="Sign out"
+                title="Sign out"
+                className="grid h-11 w-11 place-items-center rounded-full text-muted transition hover:bg-ink-2 hover:text-text"
+                onClick={signOut}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                  <path d="M16 17l5-5-5-5" />
+                  <path d="M21 12H9" />
+                </svg>
+              </button>
+            </div>
+          )}
           <button
             type="button"
-            aria-label="Manually add a pin"
-            title="Manually add a pin"
+            aria-label={menuOpen ? 'Close admin actions' : 'Open admin actions'}
+            title={menuOpen ? 'Close admin actions' : 'Open admin actions'}
             className="grid h-14 w-14 place-items-center rounded-full bg-sun text-3xl font-semibold leading-none text-[#4a3a0c] shadow-2xl ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:brightness-105"
-            onClick={() => setTool('manual')}
+            onClick={() => setMenuOpen((open) => !open)}
           >
-            +
+            <span className={`block transition-transform ${menuOpen ? 'rotate-45' : ''}`}>+</span>
           </button>
         </div>
       )}
