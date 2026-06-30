@@ -1,9 +1,6 @@
 import { supabaseBrowser as sb } from './supabaseBrowser';
 import type { Pin, CollectedType } from './pins';
 
-const SELECT =
-  'id,pin_name,image_url,image_url2,image_url3,year,series,origin,edition,tags,notes,external_url,external_pin_id,is_limited_edition,is_mystery,is_ap,is_pp,collected_type,created_at';
-
 const CARD_SELECT =
   'id,pin_name,image_url,image_url2,image_url3,year,series,origin,edition,external_url,external_pin_id,is_limited_edition,is_mystery,is_ap,is_pp,created_at';
 
@@ -74,26 +71,6 @@ export async function recentArchivePins(limit = 18): Promise<Pin[]> {
   return (data ?? []) as Pin[];
 }
 
-/** Search the live collection (the displayed `pins`). */
-export async function searchCollection(
-  q: string,
-  type: CollectedType | undefined,
-  limit = 60,
-): Promise<Pin[]> {
-  const s = q.trim();
-  if (s) {
-    const { data, error } = await sb.rpc('search_pins', { q: s, p_type: type ?? null, p_limit: limit, p_offset: 0 });
-    if (!error && Array.isArray(data)) return data as Pin[];
-  }
-  let query = sb.from('pins').select(SELECT).order('created_at', { ascending: false }).limit(limit);
-  if (type) query = query.eq('collected_type', type);
-  const f = orFilter(s);
-  if (f) query = query.or(f);
-  const { data, error } = await query;
-  if (error) throw error;
-  return (data ?? []) as Pin[];
-}
-
 // ---- Writes (server endpoints, authorized by the admin cookie) -------------
 
 async function mutate(op: string, payload: Record<string, unknown>): Promise<any> {
@@ -117,19 +94,6 @@ export async function addManual(input: PinInput): Promise<Pin> {
 
 export async function updatePin(id: number, patch: Partial<PinInput>): Promise<Pin> {
   return (await mutate('update', { id, patch })).pin as Pin;
-}
-
-export async function setType(id: number, type: CollectedType): Promise<void> {
-  await mutate('setType', { id, type });
-}
-
-export async function removeFromCollection(p: Pin): Promise<void> {
-  await mutate('remove', { pin: p });
-}
-
-/** Snapshot the whole collection into pins_backup. Returns the number of pins saved. */
-export async function backupNow(): Promise<number> {
-  return (await mutate('backup', {})).count as number;
 }
 
 /**

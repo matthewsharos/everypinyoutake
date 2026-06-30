@@ -30,9 +30,9 @@ function fallbackToFullImage(e: React.SyntheticEvent<HTMLImageElement>) {
   img.src = full;
 }
 
-export default function AddPin() {
+export default function AddPin({ initialMode = 'archive' }: { initialMode?: 'archive' | 'manual' }) {
   const toast = useToast();
-  const [mode, setMode] = useState<'archive' | 'manual'>('archive');
+  const [mode, setMode] = useState<'archive' | 'manual'>(initialMode);
   const requestSeq = useRef(0);
 
   // archive

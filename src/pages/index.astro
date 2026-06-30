@@ -1,5 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
+import AdminDock from '../components/admin/AdminDock.tsx';
 import PinGrid from '../components/PinGrid.astro';
 import SortSelect from '../components/SortSelect.astro';
 import { getCollection, getStats, pinImage, thumbUrl, type Pin, type SortKey } from '../lib/pins';
@@ -105,7 +106,12 @@ const lcpImage = pins.length ? thumbUrl(pinImage(pins[0])) : null;
         Couldn't load pins: {loadError}
       </div>
     ) : (
-      <PinGrid pins={pins} empty={q ? `No pins match “${q}”.` : 'No pins yet.'} />
+      <PinGrid
+        pins={pins}
+        more={{ search: q || undefined, sort, pageSize: 60, autoLoadAll: !!q }}
+        empty={q ? `No pins match “${q}”.` : 'No pins yet.'}
+      />
     )}
   </section>
+  <AdminDock client:load />
 </Base>

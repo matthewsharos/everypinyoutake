@@ -26,6 +26,8 @@ export default function PinForm({ initial = {}, submitLabel, onSubmit }: Props) 
     external_url: initial.external_url ?? '',
     external_pin_id: initial.external_pin_id ?? '',
     image_url: initial.image_url ?? '',
+    image_url2: initial.image_url2 ?? '',
+    image_url3: initial.image_url3 ?? '',
     is_limited_edition: initial.is_limited_edition ?? false,
     is_mystery: initial.is_mystery ?? false,
     is_ap: initial.is_ap ?? false,
@@ -148,6 +150,17 @@ export default function PinForm({ initial = {}, submitLabel, onSubmit }: Props) 
         <div>
           <label className={label}>External Pin ID</label>
           <input className={field} value={v.external_pin_id ?? ''} onChange={(e) => set('external_pin_id', e.target.value)} />
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label className={label}>Image URL 2</label>
+          <input className={field} value={v.image_url2 ?? ''} onChange={(e) => set('image_url2', e.target.value)} />
+        </div>
+        <div>
+          <label className={label}>Image URL 3</label>
+          <input className={field} value={v.image_url3 ?? ''} onChange={(e) => set('image_url3', e.target.value)} />
         </div>
       </div>
 

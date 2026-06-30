@@ -87,20 +87,5 @@ const structuredData = {
       <slot />
     </main>
     <Footer />
-    <!-- secret door: type "stitch" anywhere (outside a text field) to reach the admin -->
-    <script is:inline>
-      (() => {
-        const secret = 'stitch';
-        let buf = '';
-        addEventListener('keydown', (e) => {
-          const t = e.target;
-          if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
-          if (e.key && e.key.length === 1) {
-            buf = (buf + e.key.toLowerCase()).slice(-secret.length);
-            if (buf === secret) location.href = '/admin';
-          }
-        });
-      })();
-    </script>
   </body>
 </html>

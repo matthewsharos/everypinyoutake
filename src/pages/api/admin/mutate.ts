@@ -111,26 +111,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         await markArchiveSiteFlags(sb, data.id);
         return json({ pin: data });
       }
-      case 'setType': {
-        const { error } = await sb.from('pins').update({ collected_type: body.type }).eq('id', body.id);
-        if (error) throw error;
-        return json({ ok: true });
-      }
-      case 'remove': {
-        const p = body.pin;
-        // Safe remove: snapshot the removed pin into pins_backup (keeps the archive pristine).
-        await sb.from('pins_backup').insert({ kind: 'removed', pin_count: 1, data: [p] });
-        const { error } = await sb.from('pins').delete().eq('id', p.id);
-        if (error) throw error;
-        await markArchiveSiteFlags(sb, p.id);
-        return json({ ok: true });
-      }
-      case 'backup': {
-        // Full snapshot of the live collection into pins_backup (no row limit — runs in DB).
-        const { data, error } = await sb.rpc('snapshot_pins', { p_kind: 'manual' });
-        if (error) throw error;
-        return json({ ok: true, count: data ?? 0 });
-      }
       default:
         return json({ error: 'Unknown action.' }, 400);
     }

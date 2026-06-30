@@ -45,7 +45,7 @@ const lcpImage = pins.length ? thumbUrl(pinImage(pins[0])) : null;
         Couldn't load pins: {loadError}
       </div>
     ) : (
-      <PinGrid pins={pins} empty="Nothing on the wishlist right now." />
+      <PinGrid pins={pins} more={{ type: 'ISO', sort, pageSize: 120 }} empty="Nothing on the wishlist right now." />
     )}
   </section>
 </Base>

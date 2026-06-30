@@ -362,7 +362,8 @@ returns setof public.pins language sql stable as $$
   order by
     (case when q = '' then 0
           else ts_rank(p.fts, websearch_to_tsquery('english', q)) + similarity(p.pin_name, q) end) desc,
-    p.created_at desc
+    p.created_at desc,
+    p.id desc
   limit greatest(p_limit, 1) offset greatest(p_offset, 0);
 $$;
 

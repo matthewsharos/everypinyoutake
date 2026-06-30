@@ -44,9 +44,11 @@ export interface GetCollectionOpts {
 }
 
 function orderBy(q: any, sort: SortKey) {
-  if (sort === 'updated') return q.order('updated_at', { ascending: false });
-  if (sort === 'az') return q.order('pin_name', { ascending: true });
-  return q.order('created_at', { ascending: false });
+  // `id` is a stable tiebreak so offset pagination can't drop or duplicate rows
+  // when many pins share a created_at/updated_at/name (e.g. a bulk import).
+  if (sort === 'updated') return q.order('updated_at', { ascending: false }).order('id', { ascending: false });
+  if (sort === 'az') return q.order('pin_name', { ascending: true }).order('id', { ascending: true });
+  return q.order('created_at', { ascending: false }).order('id', { ascending: false });
 }
 
 /**

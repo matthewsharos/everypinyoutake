@@ -45,7 +45,8 @@ const { class: cls = '', includeAdmin = false } = Astro.props;
   ))}
   {includeAdmin && (
     <a
-      href="/admin"
+      href="/#admin"
+      data-admin-lock
       aria-label="Admin"
       title="Admin"
       class="grid h-9 w-9 place-items-center rounded-full text-muted transition-colors hover:bg-white/80 hover:text-text"

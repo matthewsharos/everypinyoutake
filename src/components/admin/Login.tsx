@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-export default function Login({ onAuthed }: { onAuthed: () => void }) {
+export default function Login({ onAuthed, compact = false }: { onAuthed: () => void; compact?: boolean }) {
   const [digits, setDigits] = useState(['', '', '', '']);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
@@ -54,7 +54,7 @@ export default function Login({ onAuthed }: { onAuthed: () => void }) {
   };
 
   return (
-    <div className="grid min-h-dvh place-items-center p-4">
+    <div className={`grid place-items-center p-4 ${compact ? '' : 'min-h-dvh'}`}>
       <div className="w-full max-w-xs rounded-3xl border border-line bg-surface p-8 text-center shadow-xl">
         <img
           src="/favicon.png"

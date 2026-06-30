@@ -45,7 +45,7 @@ const lcpImage = pins.length ? thumbUrl(pinImage(pins[0])) : null;
         Couldn't load pins: {loadError}
       </div>
     ) : (
-      <PinGrid pins={pins} empty="Nothing up for trade right now." />
+      <PinGrid pins={pins} more={{ type: 'For Trade', sort, pageSize: 120 }} empty="Nothing up for trade right now." />
     )}
   </section>
 </Base>
