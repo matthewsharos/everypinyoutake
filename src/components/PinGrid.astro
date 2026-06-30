@@ -1,20 +1,13 @@
 ---
-import type { Pin, CollectedType, SortKey } from '../lib/pins';
+import type { Pin } from '../lib/pins';
 import PinCard from './PinCard.astro';
 import PinDeck from './PinDeck.tsx';
 
 interface Props {
   pins: Pin[];
   empty?: string;
-  /**
-   * Enable infinite scroll past the first (SSR) page. Pass the same query that
-   * produced `pins` so PinDeck can fetch the rest of the collection. Omit for a
-   * static, non-paginated grid.
-   */
-  more?: { type?: CollectedType; search?: string; sort?: SortKey; pageSize: number; autoLoadAll?: boolean };
 }
-const { pins, empty = 'No pins to show yet.', more } = Astro.props;
-const gridId = 'pin-grid';
+const { pins, empty = 'No pins to show yet.' } = Astro.props;
 ---
 
 {pins.length === 0 ? (
@@ -23,19 +16,12 @@ const gridId = 'pin-grid';
   </div>
 ) : (
   <Fragment>
-    <div id={gridId} class="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+    <div id="pin-grid" class="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
       {pins.map((pin, i) => <PinCard pin={pin} index={i} />)}
     </div>
     <PinDeck
       client:load
-      initialPins={pins}
-      gridId={gridId}
-      pageSize={more?.pageSize ?? pins.length}
-      type={more?.type}
-      search={more?.search}
-      sort={more?.sort}
-      load={!!more}
-      autoLoadAll={more?.autoLoadAll}
+      pins={pins}
     />
   </Fragment>
 )}

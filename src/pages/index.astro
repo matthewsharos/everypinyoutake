@@ -16,7 +16,7 @@ let loadError = '';
 
 try {
   const [collection, s] = await Promise.all([
-    getCollection({ search: q || undefined, sort, limit: 60 }),
+    getCollection({ search: q || undefined, sort, limit: null }),
     getStats(),
   ]);
   pins = collection.pins;
@@ -91,7 +91,7 @@ const lcpImage = pins.length ? thumbUrl(pinImage(pins[0])) : null;
       <div class="flex items-center gap-4">
         <p class="text-sm text-muted">
           {q
-            ? `${fmt(pins.length)}${pins.length >= 60 ? '+' : ''} ${pins.length === 1 ? 'result' : 'results'} for “${q}”`
+            ? `${fmt(pins.length)} ${pins.length === 1 ? 'result' : 'results'} for “${q}”`
             : `${fmt(stats.total)} pins`}
           {q && (
             <a href="/" class="ml-2 text-sky hover:underline">clear</a>
@@ -108,7 +108,6 @@ const lcpImage = pins.length ? thumbUrl(pinImage(pins[0])) : null;
     ) : (
       <PinGrid
         pins={pins}
-        more={{ search: q || undefined, sort, pageSize: 60, autoLoadAll: !!q }}
         empty={q ? `No pins match “${q}”.` : 'No pins yet.'}
       />
     )}

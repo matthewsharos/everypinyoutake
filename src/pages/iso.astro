@@ -11,7 +11,7 @@ let pins: Pin[] = [];
 let total = 0;
 let loadError = '';
 try {
-  const r = await getCollection({ type: 'ISO', sort, limit: 120 });
+  const r = await getCollection({ type: 'ISO', sort, limit: null });
   pins = r.pins;
   total = r.total;
 } catch (err) {
@@ -45,7 +45,7 @@ const lcpImage = pins.length ? thumbUrl(pinImage(pins[0])) : null;
         Couldn't load pins: {loadError}
       </div>
     ) : (
-      <PinGrid pins={pins} more={{ type: 'ISO', sort, pageSize: 120 }} empty="Nothing on the wishlist right now." />
+      <PinGrid pins={pins} empty="Nothing on the wishlist right now." />
     )}
   </section>
 </Base>

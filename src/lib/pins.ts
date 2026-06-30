@@ -22,10 +22,11 @@ export interface Pin {
   is_pp: boolean | null;
   collected_type: string | null;
   created_at?: string | null;
+  updated_at?: string | null;
 }
 
 const COLUMNS =
-  'id,pin_name,image_url,image_url2,image_url3,year,series,origin,edition,tags,notes,external_url,external_pin_id,is_limited_edition,is_mystery,is_ap,is_pp,collected_type,created_at';
+  'id,pin_name,image_url,image_url2,image_url3,year,series,origin,edition,tags,notes,external_url,external_pin_id,is_limited_edition,is_mystery,is_ap,is_pp,collected_type,created_at,updated_at';
 
 // Fields searched by the public metadata search (v1: ilike OR; task #6 upgrades to Postgres FTS + pg_trgm).
 const SEARCH_FIELDS = ['pin_name', 'series', 'origin', 'edition', 'tags', 'notes'];
@@ -37,11 +38,13 @@ export interface GetCollectionOpts {
   type?: CollectedType;
   /** Free-text search across pin metadata. */
   search?: string;
-  /** Sort order for browse views (search results are relevance-ranked). */
+  /** Sort order for browse and search views. */
   sort?: SortKey;
-  limit?: number;
+  limit?: number | null;
   offset?: number;
 }
+
+const FETCH_PAGE_SIZE = 1000;
 
 function orderBy(q: any, sort: SortKey) {
   // `id` is a stable tiebreak so offset pagination can't drop or duplicate rows
@@ -49,6 +52,35 @@ function orderBy(q: any, sort: SortKey) {
   if (sort === 'updated') return q.order('updated_at', { ascending: false }).order('id', { ascending: false });
   if (sort === 'az') return q.order('pin_name', { ascending: true }).order('id', { ascending: true });
   return q.order('created_at', { ascending: false }).order('id', { ascending: false });
+}
+
+function sortPins(pins: Pin[], sort: SortKey) {
+  const ts = (value: string | null | undefined) => (value ? Date.parse(value) || 0 : 0);
+  const copy = [...pins];
+  if (sort === 'updated') {
+    return copy.sort((a, b) => ts(b.updated_at ?? b.created_at) - ts(a.updated_at ?? a.created_at) || b.id - a.id);
+  }
+  if (sort === 'az') {
+    return copy.sort((a, b) => (a.pin_name || '').localeCompare(b.pin_name || '') || a.id - b.id);
+  }
+  return copy.sort((a, b) => ts(b.created_at) - ts(a.created_at) || b.id - a.id);
+}
+
+async function getAllPages(
+  fetchPage: (limit: number, offset: number) => Promise<{ pins: Pin[]; total?: number }>,
+): Promise<{ pins: Pin[]; total: number }> {
+  const all: Pin[] = [];
+  let total: number | undefined;
+
+  for (let offset = 0; ; offset += FETCH_PAGE_SIZE) {
+    const page = await fetchPage(FETCH_PAGE_SIZE, offset);
+    if (typeof page.total === 'number') total = page.total;
+    all.push(...page.pins);
+    if (page.pins.length < FETCH_PAGE_SIZE) break;
+    if (typeof total === 'number' && all.length >= total) break;
+  }
+
+  return { pins: all, total: total ?? all.length };
 }
 
 /**
@@ -61,18 +93,47 @@ export async function getCollection(opts: GetCollectionOpts = {}): Promise<{ pin
   if (s) {
     // Ranked, typo-tolerant full-text search; falls back to ILIKE if the search
     // migration (db/search.sql) hasn't been applied yet.
+    if (limit === null) {
+      const { pins } = await getAllPages(async (pageLimit, pageOffset) => {
+        const { data, error } = await supabase.rpc('search_pins', {
+          q: s,
+          p_type: type ?? null,
+          p_limit: pageLimit,
+          p_offset: pageOffset,
+        });
+        if (error || !Array.isArray(data)) return ilikeCollection(type, s, sort, pageLimit, pageOffset);
+        return { pins: data as Pin[] };
+      });
+      return { pins: sortPins(pins, sort), total: pins.length };
+    }
+
+    const pageLimit = limit ?? 60;
     const { data, error } = await supabase.rpc('search_pins', {
       q: s,
       p_type: type ?? null,
-      p_limit: limit,
+      p_limit: pageLimit,
       p_offset: offset,
     });
     if (!error && Array.isArray(data)) {
-      return { pins: data as Pin[], total: data.length };
+      const pins = sortPins(data as Pin[], sort);
+      return { pins, total: pins.length };
     }
-    return ilikeCollection(type, s, sort, limit, offset);
+    return ilikeCollection(type, s, sort, pageLimit, offset);
   }
 
+  if (limit === null) {
+    return getAllPages((pageLimit, pageOffset) => queryCollectionPage(type, sort, pageLimit, pageOffset));
+  }
+
+  return queryCollectionPage(type, sort, limit ?? 60, offset);
+}
+
+async function queryCollectionPage(
+  type: CollectedType | undefined,
+  sort: SortKey,
+  limit: number,
+  offset: number,
+): Promise<{ pins: Pin[]; total: number }> {
   let q = supabase
     .from('pins')
     .select(COLUMNS, { count: 'exact' })

@@ -11,7 +11,7 @@ let pins: Pin[] = [];
 let total = 0;
 let loadError = '';
 try {
-  const r = await getCollection({ type: 'For Trade', sort, limit: 120 });
+  const r = await getCollection({ type: 'For Trade', sort, limit: null });
   pins = r.pins;
   total = r.total;
 } catch (err) {
@@ -45,7 +45,7 @@ const lcpImage = pins.length ? thumbUrl(pinImage(pins[0])) : null;
         Couldn't load pins: {loadError}
       </div>
     ) : (
-      <PinGrid pins={pins} more={{ type: 'For Trade', sort, pageSize: 120 }} empty="Nothing up for trade right now." />
+      <PinGrid pins={pins} empty="Nothing up for trade right now." />
     )}
   </section>
 </Base>
