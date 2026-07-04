@@ -4,10 +4,10 @@ import { pinImage, thumbUrl } from '../lib/pins';
 /**
  * Client-rendered twin of PinCard.astro, used by PinDeck to render infinitely
  * scrolled pages (page 2+). Keep the markup/classes in sync with PinCard.astro.
- * These cards are always below the fold, so they load lazily — there's no eager
- * LCP path here (that stays in the SSR PinCard.astro for the first screen).
+ * Appended cards load lazily. Client-owned grids can opt the first visible
+ * cards into eager loading so the LCP path stays fast.
  */
-export default function PinCard({ pin, index }: { pin: Pin; index: number }) {
+export default function PinCard({ pin, index, eager = false }: { pin: Pin; index: number; eager?: boolean }) {
   const img = pinImage(pin);
   const thumb = thumbUrl(img);
 
@@ -38,8 +38,8 @@ export default function PinCard({ pin, index }: { pin: Pin; index: number }) {
           <img
             src={thumb ?? img}
             alt={pin.pin_name}
-            loading="lazy"
-            fetchPriority="low"
+            loading={eager ? 'eager' : 'lazy'}
+            fetchPriority={eager ? 'high' : 'low'}
             decoding="async"
             // Fall back to the full-size original if the thumbnail 404s.
             onError={(e) => {

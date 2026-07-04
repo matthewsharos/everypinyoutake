@@ -1,8 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import AdminDock from '../components/admin/AdminDock.tsx';
-import PinGrid from '../components/PinGrid.astro';
-import SortSelect from '../components/SortSelect.astro';
+import CollectionSearch from '../components/CollectionSearch.tsx';
 import { getCollection, getStats, pinImage, thumbUrl, type Pin, type SortKey } from '../lib/pins';
 
 const q = (Astro.url.searchParams.get('q') ?? '').trim();
@@ -26,90 +25,24 @@ try {
   loadError = err instanceof Error ? err.message : 'Failed to load pins.';
 }
 
-const fmt = (n: number) => n.toLocaleString('en-US');
 const lcpImage = pins.length ? thumbUrl(pinImage(pins[0])) : null;
 ---
 
 <Base>
   {lcpImage && <link slot="head" rel="preload" as="image" href={lcpImage} fetchpriority="high" />}
   <section class="wrap pt-7 pb-16">
-    <!-- search-first: drop straight into the collection -->
-    <form method="get" action="/" id="search" class="relative mx-auto max-w-2xl">
-      <svg
-        class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted"
-        width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"
-      >
-        <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" />
-        <path d="M21 21l-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-      </svg>
-      <input
-        type="search"
-        name="q"
-        value={q}
-        enterkeyhint="search"
-        placeholder={`Search ${fmt(stats.total || total)} pins — name, series, origin, edition…`}
-        class="w-full rounded-full border border-line bg-white py-3.5 pl-12 pr-[6.5rem] text-base shadow-sm outline-none transition-colors placeholder:text-muted focus:border-sky/70"
-      />
-      <button type="submit" class="btn btn-primary absolute right-1.5 top-1/2 -translate-y-1/2">
-        Search
-      </button>
-    </form>
-
-    <script is:inline>
-      (() => {
-        const form = document.getElementById('search');
-        const input = form && form.querySelector('input[name="q"]');
-        if (!input) return;
-        let t;
-        input.addEventListener('input', () => {
-          clearTimeout(t);
-          const v = input.value.trim();
-          // search once a couple letters are typed, or when cleared back to empty
-          if (v.length === 1) return;
-          t = setTimeout(() => {
-            try { sessionStorage.setItem('ept:refocus', '1'); } catch {}
-            form.submit();
-          }, 350);
-        });
-        // after an auto-search reload, put the cursor back at the end of the box
-        try {
-          if (sessionStorage.getItem('ept:refocus')) {
-            sessionStorage.removeItem('ept:refocus');
-            input.focus();
-            const end = input.value.length;
-            try { input.setSelectionRange(end, end); } catch {}
-          }
-        } catch {}
-      })();
-    </script>
-
-    <!-- collection header -->
-    <div class="mb-5 mt-8 flex flex-wrap items-center justify-between gap-3">
-      <h1 class="text-xl font-semibold sm:text-2xl">
-        {q ? 'Search results' : 'The Collection'}
-      </h1>
-      <div class="flex items-center gap-4">
-        <p class="text-sm text-muted">
-          {q
-            ? `${fmt(pins.length)}${pins.length >= 60 ? '+' : ''} ${pins.length === 1 ? 'result' : 'results'} for “${q}”`
-            : `${fmt(stats.total)} pins`}
-          {q && (
-            <a href="/" class="ml-2 text-sky hover:underline">clear</a>
-          )}
-        </p>
-        <SortSelect sort={sort} action="/" q={q} />
-      </div>
-    </div>
-
     {loadError ? (
       <div class="rounded-2xl border border-magenta/40 bg-magenta/5 p-6 text-sm text-magenta">
         Couldn't load pins: {loadError}
       </div>
     ) : (
-      <PinGrid
-        pins={pins}
-        more={{ search: q || undefined, sort, pageSize: 60 }}
-        empty={q ? `No pins match “${q}”.` : 'No pins yet.'}
+      <CollectionSearch
+        client:load
+        initialPins={pins}
+        initialQuery={q}
+        initialSort={sort}
+        totalPins={stats.total || total}
+        pageSize={60}
       />
     )}
   </section>
