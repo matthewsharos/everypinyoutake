@@ -2,13 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Pin } from '../lib/pins';
 import { thumbUrl } from '../lib/pins';
 import { cleanNotes } from '../lib/notes';
-import { updatePin as savePin, uploadPinImage, type PinInput } from '../lib/adminApi';
+import { deletePin as removePin, updatePin as savePin, uploadPinImage, type PinInput } from '../lib/adminApi';
 import PinForm from './admin/PinForm';
 import { useToast } from './admin/Toast';
 
 interface Props {
   pins: Pin[];
   onPinUpdated?: (pin: Pin) => void;
+  onPinDeleted?: (pin: Pin) => void;
 }
 
 type ImageSlot = 'image_url' | 'image_url2' | 'image_url3';
@@ -19,7 +20,7 @@ const imageSlots: ImageSlot[] = ['image_url', 'image_url2', 'image_url3'];
  * One interactive island per grid. The grid itself stays static SSR HTML;
  * cards carry `data-pin-index` and this island opens/cycles the detail modal.
  */
-export default function PinModal({ pins, onPinUpdated }: Props) {
+export default function PinModal({ pins, onPinUpdated, onPinDeleted }: Props) {
   const toast = useToast();
   const [index, setIndex] = useState<number | null>(null);
   const [imgIdx, setImgIdx] = useState(0);
@@ -27,14 +28,16 @@ export default function PinModal({ pins, onPinUpdated }: Props) {
   const [authed, setAuthed] = useState(false);
   const [editing, setEditing] = useState(false);
   const [uploadingSlot, setUploadingSlot] = useState<ImageSlot | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [editedPins, setEditedPins] = useState<Record<number, Pin>>({});
+  const [deletedPins, setDeletedPins] = useState<Record<number, boolean>>({});
   const dialogRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const pendingSlotRef = useRef<ImageSlot>('image_url');
 
   const visiblePins = useMemo(
-    () => pins.map((pin) => editedPins[pin.id] ?? pin),
-    [pins, editedPins],
+    () => pins.filter((pin) => !deletedPins[pin.id]).map((pin) => editedPins[pin.id] ?? pin),
+    [pins, editedPins, deletedPins],
   );
 
   const close = useCallback(() => {
@@ -43,7 +46,7 @@ export default function PinModal({ pins, onPinUpdated }: Props) {
   }, []);
   const go = useCallback(
     (dir: number) =>
-      setIndex((i) => (i === null ? i : (i + dir + visiblePins.length) % visiblePins.length)),
+      setIndex((i) => (i === null || visiblePins.length === 0 ? i : (i + dir + visiblePins.length) % visiblePins.length)),
     [visiblePins.length],
   );
 
@@ -75,7 +78,9 @@ export default function PinModal({ pins, onPinUpdated }: Props) {
     const openFrom = (el: EventTarget | null) => {
       const card = (el as Element | null)?.closest?.('[data-pin-index]') as HTMLElement | null;
       if (!card) return false;
-      const i = Number(card.dataset.pinIndex);
+      const pinId = Number(card.dataset.pinId);
+      const byId = Number.isInteger(pinId) ? visiblePins.findIndex((p) => p.id === pinId) : -1;
+      const i = byId >= 0 ? byId : Number(card.dataset.pinIndex);
       if (Number.isInteger(i) && i >= 0 && i < visiblePins.length) {
         setIndex(i);
         return true;
@@ -92,6 +97,14 @@ export default function PinModal({ pins, onPinUpdated }: Props) {
       document.removeEventListener('click', onClick);
       document.removeEventListener('keydown', onKey);
     };
+  }, [visiblePins]);
+
+  useEffect(() => {
+    setIndex((i) => {
+      if (i === null) return null;
+      if (visiblePins.length === 0) return null;
+      return Math.min(i, visiblePins.length - 1);
+    });
   }, [visiblePins.length]);
 
   // While open: keyboard nav, scroll lock, focus.
@@ -116,8 +129,9 @@ export default function PinModal({ pins, onPinUpdated }: Props) {
     };
   }, [index, close, go, zoomed, editing]);
 
-  if (index === null) return null;
-  const pin = visiblePins[index];
+  const currentIndex = index === null ? null : Math.min(index, visiblePins.length - 1);
+  if (currentIndex === null || currentIndex < 0) return null;
+  const pin = visiblePins[currentIndex];
 
   const imageEntries = imageSlots
     .map((slot) => ({ slot, src: pin[slot] as string | null }))
@@ -158,6 +172,32 @@ export default function PinModal({ pins, onPinUpdated }: Props) {
     applyUpdatedPin(updated);
     setEditing(false);
     toast.success(`"${updated.pin_name}" saved.`);
+  };
+
+  const deleteCurrentPin = async () => {
+    if (!window.confirm(`Delete "${pin.pin_name}" from the collection? A backup will be archived first.`)) return;
+    setDeleting(true);
+    try {
+      const deleted = await removePin(pin.id);
+      setDeletedPins((current) => ({ ...current, [deleted.id]: true }));
+      setEditedPins((current) => {
+        const next = { ...current };
+        delete next[deleted.id];
+        return next;
+      });
+      onPinDeleted?.(deleted);
+      setEditing(false);
+      const nextLength = visiblePins.length - 1;
+      setIndex((current) => {
+        if (current === null || nextLength <= 0) return null;
+        return Math.min(current, nextLength - 1);
+      });
+      toast.success(`"${deleted.pin_name}" deleted.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Delete failed.');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const openReplace = (slot: ImageSlot) => {
@@ -298,13 +338,57 @@ export default function PinModal({ pins, onPinUpdated }: Props) {
               <span key={f.label} className={`chip ${f.cls}`}>{f.label}</span>
             ))}
             {authed && (
-              <button
-                type="button"
-                onClick={() => setEditing((value) => !value)}
-                className="ml-auto rounded-full border border-line px-3 py-1 text-xs font-semibold text-muted transition hover:border-sky hover:text-sky"
-              >
-                {editing ? 'Done' : 'Edit'}
-              </button>
+              <div className="ml-auto flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditing((value) => !value)}
+                  className="rounded-full border border-line px-3 py-1 text-xs font-semibold text-muted transition hover:border-sky hover:text-sky"
+                >
+                  {editing ? 'Done' : 'Edit'}
+                </button>
+                <button
+                  type="button"
+                  onClick={deleteCurrentPin}
+                  disabled={deleting}
+                  aria-label={deleting ? 'Deleting pin' : 'Delete pin from collection'}
+                  title={deleting ? 'Deleting pin…' : 'Delete pin from collection'}
+                  className="grid h-8 w-8 place-items-center rounded-full border border-magenta/30 text-magenta transition hover:border-magenta hover:bg-magenta/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-magenta/40 disabled:cursor-wait disabled:opacity-60"
+                >
+                  {deleting ? (
+                    <svg
+                      width="15"
+                      height="15"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      aria-hidden="true"
+                      className="animate-spin"
+                    >
+                      <path d="M21 12a9 9 0 1 1-6.2-8.56" />
+                    </svg>
+                  ) : (
+                    <svg
+                      width="15"
+                      height="15"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M3 6h18" />
+                      <path d="M8 6V4h8v2" />
+                      <path d="M19 6l-1 14H6L5 6" />
+                      <path d="M10 11v5" />
+                      <path d="M14 11v5" />
+                    </svg>
+                  )}
+                </button>
+              </div>
             )}
           </div>
 
@@ -335,7 +419,7 @@ export default function PinModal({ pins, onPinUpdated }: Props) {
           )}
 
           <div className="mt-auto flex items-center justify-between gap-3 pt-6">
-            <span className="text-xs text-muted">{index + 1} of {visiblePins.length}</span>
+            <span className="text-xs text-muted">{currentIndex + 1} of {visiblePins.length}</span>
             {pin.external_url && (
               <a
                 href={pin.external_url}

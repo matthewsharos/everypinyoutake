@@ -23,6 +23,7 @@ export default function PinCard({ pin, index, eager = false }: { pin: Pin; index
   return (
     <article
       className="pin-card cursor-pointer"
+      data-pin-id={pin.id}
       data-pin-index={index}
       role="button"
       tabIndex={0}

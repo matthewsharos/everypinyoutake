@@ -96,6 +96,10 @@ export async function updatePin(id: number, patch: Partial<PinInput>): Promise<P
   return (await mutate('update', { id, patch })).pin as Pin;
 }
 
+export async function deletePin(id: number): Promise<Pin> {
+  return (await mutate('delete', { id })).pin as Pin;
+}
+
 /**
  * Downscale an image to an optimized WebP thumbnail for the catalog grid.
  * Runs in the browser via <canvas>; returns null if the image can't be decoded

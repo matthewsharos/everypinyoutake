@@ -69,6 +69,24 @@ async function markArchiveSiteFlags(sb: ReturnType<typeof serviceClient>, pinId:
   if (error) console.warn(`Archive duplicate flag refresh failed for pin ${id}: ${error.message}`);
 }
 
+async function clearArchiveSiteFlagsForPin(sb: ReturnType<typeof serviceClient>, pinId: number) {
+  const { error } = await sb
+    .from('pin_archive')
+    .update({
+      already_on_site: false,
+      already_on_site_pin_id: null,
+      already_on_site_match: null,
+      already_on_site_updated_at: new Date().toISOString(),
+    })
+    .eq('already_on_site_pin_id', pinId);
+  if (error) console.warn(`Archive duplicate flag clear failed for pin ${pinId}: ${error.message}`);
+}
+
+async function refreshArchiveSiteFlags(sb: ReturnType<typeof serviceClient>) {
+  const { error } = await sb.rpc('refresh_pin_archive_site_flags');
+  if (error) console.warn(`Archive duplicate flag refresh failed: ${error.message}`);
+}
+
 export const POST: APIRoute = async ({ request, cookies }) => {
   if (!(await isAuthed(cookies.get(COOKIE)?.value))) return json({ error: 'Not authorized.' }, 401);
   if (!hasServiceKey()) return json({ error: 'Saving is not enabled yet (set SUPABASE_SERVICE_ROLE_KEY).' }, 503);
@@ -110,6 +128,29 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         if (error) throw error;
         await markArchiveSiteFlags(sb, data.id);
         return json({ pin: data });
+      }
+      case 'delete': {
+        const id = Number(body.id);
+        if (!Number.isFinite(id)) return json({ error: 'Invalid pin id.' }, 400);
+
+        const { data: pin, error: findError } = await sb.from('pins').select(SELECT).eq('id', id).maybeSingle();
+        if (findError) throw findError;
+        if (!pin) return json({ error: 'Pin not found.' }, 404);
+
+        const { error: backupError } = await sb.from('pins_backup').insert({
+          kind: 'removed',
+          pin_count: 1,
+          data: pin,
+        });
+        if (backupError) throw backupError;
+
+        await clearArchiveSiteFlagsForPin(sb, id);
+
+        const { error: deleteError } = await sb.from('pins').delete().eq('id', id);
+        if (deleteError) throw deleteError;
+
+        await refreshArchiveSiteFlags(sb);
+        return json({ pin });
       }
       default:
         return json({ error: 'Unknown action.' }, 400);

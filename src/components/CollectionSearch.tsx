@@ -192,6 +192,14 @@ export default function CollectionSearch({
     });
   }, []);
 
+  const deletePin = useCallback((deleted: Pin) => {
+    setPins((current) => {
+      const next = current.filter((pin) => pin.id !== deleted.id);
+      pinsRef.current = next;
+      return next;
+    });
+  }, []);
+
   const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     void runSearch(normalizeQuery(inputValue), sort);
@@ -294,7 +302,7 @@ export default function CollectionSearch({
             ))}
           </div>
 
-          <PinModal pins={pins} onPinUpdated={updatePin} />
+          <PinModal pins={pins} onPinUpdated={updatePin} onPinDeleted={deletePin} />
 
           {!done && <div ref={sentinelRef} aria-hidden="true" className="h-px w-full" />}
           {!done && (

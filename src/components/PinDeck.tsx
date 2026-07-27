@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { getCollection, type CollectedType, type Pin, type SortKey } from '../lib/pins';
 import PinCard from './PinCard';
@@ -49,6 +49,7 @@ export default function PinDeck({
   const doneRef = useRef(done);
   const pinsRef = useRef(pins);
   const nearBottomRef = useRef<() => boolean>(() => false);
+  const initialIds = useMemo(() => new Set(initialPins.map((pin) => pin.id)), [initialPins]);
   doneRef.current = done;
   pinsRef.current = pins;
 
@@ -120,7 +121,7 @@ export default function PinDeck({
     if (load && autoLoadAll && !doneRef.current) loadMore();
   }, [load, autoLoadAll, loadMore]);
 
-  const appended = pins.slice(initialPins.length);
+  const appended = pins.filter((pin) => !initialIds.has(pin.id));
   const updatePin = useCallback((updated: Pin) => {
     setPins((current) => {
       const next = current.map((pin) => (pin.id === updated.id ? updated : pin));
@@ -128,6 +129,15 @@ export default function PinDeck({
       return next;
     });
   }, []);
+
+  const deletePin = useCallback((deleted: Pin) => {
+    grid?.querySelector(`[data-pin-id="${deleted.id}"]`)?.remove();
+    setPins((current) => {
+      const next = current.filter((pin) => pin.id !== deleted.id);
+      pinsRef.current = next;
+      return next;
+    });
+  }, [grid]);
 
   return (
     <>
@@ -139,7 +149,7 @@ export default function PinDeck({
         )}
 
       <ToastProvider>
-        <PinModal pins={pins} onPinUpdated={updatePin} />
+        <PinModal pins={pins} onPinUpdated={updatePin} onPinDeleted={deletePin} />
       </ToastProvider>
 
       {!done && <div ref={sentinelRef} aria-hidden="true" className="h-px w-full" />}
