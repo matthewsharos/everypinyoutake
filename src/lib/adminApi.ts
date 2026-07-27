@@ -100,6 +100,10 @@ export async function deletePin(id: number): Promise<Pin> {
   return (await mutate('delete', { id })).pin as Pin;
 }
 
+export async function deletePins(ids: number[]): Promise<Pin[]> {
+  return (await mutate('bulkDelete', { ids })).pins as Pin[];
+}
+
 /**
  * Downscale an image to an optimized WebP thumbnail for the catalog grid.
  * Runs in the browser via <canvas>; returns null if the image can't be decoded

@@ -152,6 +152,21 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         await refreshArchiveSiteFlags(sb);
         return json({ pin });
       }
+      case 'bulkDelete': {
+        if (!Array.isArray(body.ids)) return json({ error: 'Pin ids are required.' }, 400);
+        const ids = [...new Set(body.ids.map(Number))];
+        if (
+          ids.length === 0
+          || ids.length > 100
+          || ids.some((id) => !Number.isSafeInteger(id) || id <= 0)
+        ) {
+          return json({ error: 'Select between 1 and 100 valid pins.' }, 400);
+        }
+
+        const { data, error } = await sb.rpc('admin_remove_pins', { p_ids: ids });
+        if (error) throw error;
+        return json({ pins: data ?? [] });
+      }
       default:
         return json({ error: 'Unknown action.' }, 400);
     }

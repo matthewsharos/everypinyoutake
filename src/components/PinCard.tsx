@@ -7,7 +7,23 @@ import { pinImage, thumbUrl } from '../lib/pins';
  * Appended cards load lazily. Client-owned grids can opt the first visible
  * cards into eager loading so the LCP path stays fast.
  */
-export default function PinCard({ pin, index, eager = false }: { pin: Pin; index: number; eager?: boolean }) {
+interface Props {
+  pin: Pin;
+  index: number;
+  eager?: boolean;
+  selectionMode?: boolean;
+  selected?: boolean;
+  onToggleSelected?: (pin: Pin) => void;
+}
+
+export default function PinCard({
+  pin,
+  index,
+  eager = false,
+  selectionMode = false,
+  selected = false,
+  onToggleSelected,
+}: Props) {
   const img = pinImage(pin);
   const thumb = thumbUrl(img);
 
@@ -22,13 +38,46 @@ export default function PinCard({ pin, index, eager = false }: { pin: Pin; index
 
   return (
     <article
-      className="pin-card cursor-pointer"
+      className={`pin-card cursor-pointer ${
+        selected ? 'border-magenta ring-2 ring-magenta/70 shadow-lg' : ''
+      }`}
       data-pin-id={pin.id}
       data-pin-index={index}
       role="button"
       tabIndex={0}
-      aria-label={`View details for ${pin.pin_name}`}
+      aria-label={selectionMode ? `${selected ? 'Deselect' : 'Select'} ${pin.pin_name}` : `View details for ${pin.pin_name}`}
+      aria-pressed={selectionMode ? selected : undefined}
+      onClick={
+        selectionMode
+          ? (event) => {
+              event.stopPropagation();
+              onToggleSelected?.(pin);
+            }
+          : undefined
+      }
+      onKeyDown={
+        selectionMode
+          ? (event) => {
+              if (event.key !== 'Enter' && event.key !== ' ') return;
+              event.preventDefault();
+              event.stopPropagation();
+              onToggleSelected?.(pin);
+            }
+          : undefined
+      }
     >
+      {selectionMode && (
+        <span
+          aria-hidden="true"
+          className={`absolute left-2.5 top-2.5 z-20 grid h-7 w-7 place-items-center rounded-full border-2 text-sm font-bold shadow-sm transition ${
+            selected
+              ? 'border-magenta bg-magenta text-white'
+              : 'border-white bg-white/90 text-transparent ring-1 ring-black/10'
+          }`}
+        >
+          ✓
+        </span>
+      )}
       <div className="pin-shot">
         {pin.edition && (
           <span className="absolute right-2.5 top-2.5 z-10 rounded-md bg-white/85 px-1.5 py-0.5 text-[0.66rem] font-bold text-text shadow-sm ring-1 ring-black/5 backdrop-blur-sm">

@@ -10,6 +10,7 @@ interface Props {
   pins: Pin[];
   onPinUpdated?: (pin: Pin) => void;
   onPinDeleted?: (pin: Pin) => void;
+  disabled?: boolean;
 }
 
 type ImageSlot = 'image_url' | 'image_url2' | 'image_url3';
@@ -20,7 +21,7 @@ const imageSlots: ImageSlot[] = ['image_url', 'image_url2', 'image_url3'];
  * One interactive island per grid. The grid itself stays static SSR HTML;
  * cards carry `data-pin-index` and this island opens/cycles the detail modal.
  */
-export default function PinModal({ pins, onPinUpdated, onPinDeleted }: Props) {
+export default function PinModal({ pins, onPinUpdated, onPinDeleted, disabled = false }: Props) {
   const toast = useToast();
   const [index, setIndex] = useState<number | null>(null);
   const [imgIdx, setImgIdx] = useState(0);
@@ -75,6 +76,10 @@ export default function PinModal({ pins, onPinUpdated, onPinDeleted }: Props) {
 
   // Open from clicks/keys on the static grid (event delegation).
   useEffect(() => {
+    if (disabled) {
+      close();
+      return;
+    }
     const openFrom = (el: EventTarget | null) => {
       const card = (el as Element | null)?.closest?.('[data-pin-index]') as HTMLElement | null;
       if (!card) return false;
@@ -97,7 +102,7 @@ export default function PinModal({ pins, onPinUpdated, onPinDeleted }: Props) {
       document.removeEventListener('click', onClick);
       document.removeEventListener('keydown', onKey);
     };
-  }, [visiblePins]);
+  }, [close, disabled, visiblePins]);
 
   useEffect(() => {
     setIndex((i) => {

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { deletePins as removePins } from '../lib/adminApi';
 import { getCollection, type Pin, type SortKey } from '../lib/pins';
 import PinCard from './PinCard';
 import PinModal from './PinModal';
@@ -46,6 +47,13 @@ export default function CollectionSearch({
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(initialPins.length < pageSize);
   const [error, setError] = useState('');
+  const [authed, setAuthed] = useState(false);
+  const [selecting, setSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
+  const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkSuccess, setBulkSuccess] = useState('');
+  const [removedCount, setRemovedCount] = useState(0);
 
   const requestRef = useRef(0);
   const loadingMoreRef = useRef(false);
@@ -62,11 +70,16 @@ export default function CollectionSearch({
 
   const heading = query ? 'Search results' : 'The Collection';
   const resultText = useMemo(() => {
-    if (!query) return `${totalPins.toLocaleString('en-US')} pins`;
+    if (!query) return `${Math.max(0, totalPins - removedCount).toLocaleString('en-US')} pins`;
     const visible = pins.length.toLocaleString('en-US');
     const suffix = !done && pins.length >= pageSize ? '+' : '';
     return `${visible}${suffix} ${pins.length === 1 && done ? 'result' : 'results'} for “${query}”`;
-  }, [done, pageSize, pins.length, query, totalPins]);
+  }, [done, pageSize, pins.length, query, removedCount, totalPins]);
+
+  const selectedPins = useMemo(
+    () => pins.filter((pin) => selectedIds.has(pin.id)),
+    [pins, selectedIds],
+  );
 
   const replaceUrl = useCallback((nextQuery: string, nextSort: SortKey) => {
     window.history.replaceState(null, '', urlFor(nextQuery, nextSort));
@@ -76,6 +89,9 @@ export default function CollectionSearch({
     async (nextQuery: string, nextSort: SortKey, { updateUrl = true } = {}) => {
       const id = requestRef.current + 1;
       requestRef.current = id;
+      setSelecting(false);
+      setSelectedIds(new Set());
+      setConfirmingBulkDelete(false);
       setLoading(true);
       setError('');
       try {
@@ -133,6 +149,29 @@ export default function CollectionSearch({
       setLoading(false);
     }
   }, [pageSize, query, sort]);
+
+  useEffect(() => {
+    let mounted = true;
+    fetch('/api/admin-session')
+      .then((response) => response.json())
+      .then((data) => mounted && setAuthed(!!data.authed))
+      .catch(() => mounted && setAuthed(false));
+
+    const onAuth = (event: Event) => {
+      const nextAuthed = !!(event as CustomEvent<{ authed?: boolean }>).detail?.authed;
+      setAuthed(nextAuthed);
+      if (!nextAuthed) {
+        setSelecting(false);
+        setSelectedIds(new Set());
+        setConfirmingBulkDelete(false);
+      }
+    };
+    window.addEventListener('epyt:admin-auth', onAuth);
+    return () => {
+      mounted = false;
+      window.removeEventListener('epyt:admin-auth', onAuth);
+    };
+  }, []);
 
   useEffect(() => {
     if (skipInputEffectRef.current) {
@@ -198,7 +237,56 @@ export default function CollectionSearch({
       pinsRef.current = next;
       return next;
     });
+    setRemovedCount((count) => count + 1);
   }, []);
+
+  const cancelSelection = () => {
+    setSelecting(false);
+    setSelectedIds(new Set());
+    setConfirmingBulkDelete(false);
+    setError('');
+  };
+
+  const toggleSelected = (pin: Pin) => {
+    setBulkSuccess('');
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(pin.id)) {
+        next.delete(pin.id);
+      } else if (next.size < 100) {
+        next.add(pin.id);
+      } else {
+        setError('You can delete up to 100 pins at once.');
+      }
+      return next;
+    });
+  };
+
+  const bulkDeleteSelected = async () => {
+    const ids = selectedPins.map((pin) => pin.id);
+    if (ids.length === 0 || bulkDeleting) return;
+    setBulkDeleting(true);
+    setError('');
+    try {
+      const deleted = await removePins(ids);
+      const deletedIds = new Set(deleted.map((pin) => pin.id));
+      setPins((current) => {
+        const next = current.filter((pin) => !deletedIds.has(pin.id));
+        pinsRef.current = next;
+        return next;
+      });
+      setRemovedCount((count) => count + deletedIds.size);
+      setBulkSuccess(`${deletedIds.size} ${deletedIds.size === 1 ? 'pin' : 'pins'} removed from the collection.`);
+      setSelecting(false);
+      setSelectedIds(new Set());
+      setConfirmingBulkDelete(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not delete the selected pins.');
+      setConfirmingBulkDelete(false);
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
 
   const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -267,6 +355,19 @@ export default function CollectionSearch({
               </>
             )}
           </p>
+          {authed && (
+            <button
+              type="button"
+              onClick={() => (selecting ? cancelSelection() : setSelecting(true))}
+              className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
+                selecting
+                  ? 'border-magenta bg-magenta/5 text-magenta'
+                  : 'border-line bg-white/60 text-text hover:border-sky hover:text-sky'
+              }`}
+            >
+              {selecting ? 'Cancel' : 'Select'}
+            </button>
+          )}
           <form className="flex items-center gap-2" onSubmit={(event) => event.preventDefault()}>
             <label htmlFor="sort" className="text-xs text-muted">Sort</label>
             <select
@@ -290,6 +391,12 @@ export default function CollectionSearch({
         </div>
       )}
 
+      {bulkSuccess && (
+        <div className="mb-5 rounded-2xl border border-[#2f8f7c]/35 bg-[#2f8f7c]/10 p-4 text-sm font-semibold text-[#2f8f7c]">
+          {bulkSuccess}
+        </div>
+      )}
+
       {pins.length === 0 ? (
         <div className="grid place-items-center rounded-2xl border border-dashed border-line py-20 text-center">
           <p className="text-muted">{query ? `No pins match “${query}”.` : 'No pins yet.'}</p>
@@ -298,11 +405,19 @@ export default function CollectionSearch({
         <>
           <div id="pin-grid" className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {pins.map((pin, index) => (
-              <PinCard key={pin.id} pin={pin} index={index} eager={index < 10} />
+              <PinCard
+                key={pin.id}
+                pin={pin}
+                index={index}
+                eager={index < 10}
+                selectionMode={selecting}
+                selected={selectedIds.has(pin.id)}
+                onToggleSelected={toggleSelected}
+              />
             ))}
           </div>
 
-          <PinModal pins={pins} onPinUpdated={updatePin} onPinDeleted={deletePin} />
+          <PinModal pins={pins} onPinUpdated={updatePin} onPinDeleted={deletePin} disabled={selecting} />
 
           {!done && <div ref={sentinelRef} aria-hidden="true" className="h-px w-full" />}
           {!done && (
@@ -313,6 +428,69 @@ export default function CollectionSearch({
             </div>
           )}
         </>
+      )}
+
+      {selecting && (
+        <div className="fixed inset-x-0 bottom-4 z-[190] flex justify-center px-4">
+          <div className="flex w-full max-w-md items-center gap-3 rounded-full border border-line bg-white/95 p-2 pl-5 shadow-2xl backdrop-blur">
+            <span className="flex-1 text-sm font-semibold">
+              {selectedIds.size} selected
+            </span>
+            <button type="button" onClick={cancelSelection} className="px-2 py-2 text-sm font-semibold text-muted">
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={selectedIds.size === 0}
+              onClick={() => setConfirmingBulkDelete(true)}
+              className="rounded-full bg-magenta px-4 py-2 text-sm font-semibold text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      )}
+
+      {confirmingBulkDelete && (
+        <div
+          className="fixed inset-0 z-[230] flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="bulk-delete-title"
+        >
+          <button
+            type="button"
+            aria-label="Cancel bulk delete"
+            onClick={() => setConfirmingBulkDelete(false)}
+            className="absolute inset-0 bg-[rgba(42,36,28,0.58)] backdrop-blur-sm"
+          />
+          <div className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+            <h2 id="bulk-delete-title" className="font-display text-2xl font-semibold">
+              Delete {selectedIds.size} {selectedIds.size === 1 ? 'pin' : 'pins'}?
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-muted">
+              They will be removed from the collection, but their reference records will stay in the archive.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                disabled={bulkDeleting}
+                onClick={() => setConfirmingBulkDelete(false)}
+                className="btn btn-ghost"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={bulkDeleting}
+                onClick={bulkDeleteSelected}
+                className="rounded-full bg-magenta px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-105 disabled:cursor-wait disabled:opacity-60"
+              >
+                {bulkDeleting ? 'Deleting…' : `Delete ${selectedIds.size}`}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </ToastProvider>
   );
