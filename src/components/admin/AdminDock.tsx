@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import AddPin from './AddPin';
 import Login from './Login';
 import { ToastProvider } from './Toast';
@@ -7,6 +7,11 @@ type Tool = 'archive' | 'manual' | null;
 
 function announceAdminAuth(authed: boolean) {
   window.dispatchEvent(new CustomEvent('epyt:admin-auth', { detail: { authed } }));
+}
+
+function clearAdminHash() {
+  const { hash, pathname, search } = window.location;
+  if (hash === '#admin') window.history.replaceState(window.history.state, '', pathname + search);
 }
 
 function Panel({ tool, onClose }: { tool: Exclude<Tool, null>; onClose: () => void }) {
@@ -48,6 +53,7 @@ function AdminDockInner() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [tool, setTool] = useState<Tool>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const plusButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -58,7 +64,6 @@ function AdminDockInner() {
         const next = !!d.authed;
         setAuthed(next);
         announceAdminAuth(next);
-        if (next && window.location.hash === '#admin') setTool('archive');
       })
       .catch(() => mounted && setAuthed(false));
     return () => {
@@ -67,25 +72,25 @@ function AdminDockInner() {
   }, []);
 
   useEffect(() => {
-    const openLoginOrTools = () => {
-      if (authed) setTool('archive');
-      else setLoginOpen(true);
-    };
-
     const onHash = () => {
-      if (window.location.hash === '#admin') openLoginOrTools();
+      if (window.location.hash !== '#admin') return;
+      if (authed) clearAdminHash();
+      else if (authed === false) setLoginOpen(true);
     };
     const onClick = (event: MouseEvent) => {
-      const link = (event.target as Element | null)?.closest?.('[data-admin-lock]') as HTMLAnchorElement | null;
-      if (!link) return;
+      if (!(event.target as Element | null)?.closest?.('[data-admin-lock]')) return;
       event.preventDefault();
-      history.replaceState(null, '', '#admin');
-      openLoginOrTools();
+      if (authed) {
+        plusButtonRef.current?.focus({ preventScroll: true });
+        return;
+      }
+      history.replaceState(history.state, '', '#admin');
+      onHash();
     };
 
     window.addEventListener('hashchange', onHash);
     document.addEventListener('click', onClick);
-    if (window.location.hash === '#admin') openLoginOrTools();
+    onHash();
     return () => {
       window.removeEventListener('hashchange', onHash);
       document.removeEventListener('click', onClick);
@@ -104,10 +109,11 @@ function AdminDockInner() {
   };
 
   const finishLogin = () => {
+    clearAdminHash();
     setAuthed(true);
     setLoginOpen(false);
-    setTool('archive');
     announceAdminAuth(true);
+    requestAnimationFrame(() => plusButtonRef.current?.focus({ preventScroll: true }));
   };
 
   return (
@@ -168,8 +174,10 @@ function AdminDockInner() {
             </div>
           )}
           <button
+            ref={plusButtonRef}
             type="button"
             aria-label={menuOpen ? 'Close admin actions' : 'Open admin actions'}
+            aria-expanded={menuOpen}
             title={menuOpen ? 'Close admin actions' : 'Open admin actions'}
             className="grid h-14 w-14 place-items-center rounded-full bg-sun text-3xl font-semibold leading-none text-[#4a3a0c] shadow-2xl ring-1 ring-black/5 transition hover:-translate-y-0.5 hover:brightness-105"
             onClick={() => setMenuOpen((open) => !open)}
@@ -185,7 +193,10 @@ function AdminDockInner() {
             type="button"
             aria-label="Close login"
             className="absolute inset-0 cursor-default bg-[rgba(42,36,28,0.42)] backdrop-blur-sm"
-            onClick={() => setLoginOpen(false)}
+            onClick={() => {
+              clearAdminHash();
+              setLoginOpen(false);
+            }}
           />
           <div className="relative z-10">
             <Login compact onAuthed={finishLogin} />
