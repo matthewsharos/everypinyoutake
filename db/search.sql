@@ -353,17 +353,20 @@ drop function if exists public.refresh_pin_archive_site_flags_trigger();
 revoke execute on function public.refresh_pin_archive_site_flags() from anon, authenticated;
 revoke execute on function public.mark_pin_archive_site_flags_for_pin(bigint) from anon, authenticated;
 
--- Ranked, typo-tolerant search over the live collection (public).
-create or replace function public.search_pins(q text, p_type text default null, p_limit int default 60, p_offset int default 0)
+-- Typo-tolerant search over the live collection (public), sorted before paging.
+-- Default search order is most recently added, matching the public sort control.
+drop function if exists public.search_pins(text, text, int, int);
+create or replace function public.search_pins(q text, p_type text default null, p_limit int default 60, p_offset int default 0, p_sort text default 'created')
 returns setof public.pins language sql stable as $$
   select p.* from public.pins p
   where (p_type is null or p.collected_type = p_type)
     and (q = '' or p.fts @@ websearch_to_tsquery('english', q) or p.pin_name % q)
   order by
-    (case when q = '' then 0
-          else ts_rank(p.fts, websearch_to_tsquery('english', q)) + similarity(p.pin_name, q) end) desc,
-    p.created_at desc,
-    p.id desc
+    case when coalesce(p_sort, 'created') = 'updated' then p.updated_at end desc nulls last,
+    case when coalesce(p_sort, 'created') = 'az' then lower(p.pin_name) end asc nulls last,
+    case when coalesce(p_sort, 'created') not in ('updated', 'az') then p.created_at end desc nulls last,
+    case when coalesce(p_sort, 'created') = 'az' then p.id end asc,
+    case when coalesce(p_sort, 'created') <> 'az' then p.id end desc
   limit greatest(p_limit, 1) offset greatest(p_offset, 0);
 $$;
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { deletePins as removePins } from '../lib/adminApi';
 import { getCollection, type Pin, type SortKey } from '../lib/pins';
+import { normalizeOrigin } from '../lib/metadata';
 import PinCard from './PinCard';
 import PinModal from './PinModal';
 import { ToastProvider } from './admin/Toast';
@@ -9,12 +10,14 @@ interface Props {
   initialPins: Pin[];
   initialQuery?: string;
   initialSort: SortKey;
+  initialOrigin?: string;
+  origins: string[];
   totalPins: number;
   pageSize?: number;
 }
 
 const sortOptions: { value: SortKey; label: string }[] = [
-  { value: 'created', label: 'Newest' },
+  { value: 'created', label: 'Recently added' },
   { value: 'updated', label: 'Recently updated' },
   { value: 'az', label: 'A–Z' },
 ];
@@ -25,9 +28,10 @@ function normalizeQuery(value: string) {
   return value.trim();
 }
 
-function urlFor(query: string, sort: SortKey) {
+function urlFor(query: string, sort: SortKey, origin: string) {
   const params = new URLSearchParams();
   if (query) params.set('q', query);
+  if (origin) params.set('origin', origin);
   if (sort !== 'created') params.set('sort', sort);
   const qs = params.toString();
   return qs ? `/?${qs}` : '/';
@@ -37,12 +41,15 @@ export default function CollectionSearch({
   initialPins,
   initialQuery = '',
   initialSort,
+  initialOrigin = '',
+  origins,
   totalPins,
   pageSize = 60,
 }: Props) {
   const [inputValue, setInputValue] = useState(initialQuery);
   const [query, setQuery] = useState(normalizeQuery(initialQuery));
   const [sort, setSort] = useState<SortKey>(initialSort);
+  const [origin, setOrigin] = useState(initialOrigin);
   const [pins, setPins] = useState<Pin[]>(initialPins);
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(initialPins.length < pageSize);
@@ -60,6 +67,7 @@ export default function CollectionSearch({
   const pinsRef = useRef(initialPins);
   const doneRef = useRef(done);
   const sortRef = useRef(initialSort);
+  const originRef = useRef(initialOrigin);
   const skipInputEffectRef = useRef(true);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -70,23 +78,23 @@ export default function CollectionSearch({
 
   const heading = query ? 'Search results' : 'The Collection';
   const resultText = useMemo(() => {
-    if (!query) return `${Math.max(0, totalPins - removedCount).toLocaleString('en-US')} pins`;
+    if (!query && !origin) return `${Math.max(0, totalPins - removedCount).toLocaleString('en-US')} pins`;
     const visible = pins.length.toLocaleString('en-US');
     const suffix = !done && pins.length >= pageSize ? '+' : '';
-    return `${visible}${suffix} ${pins.length === 1 && done ? 'result' : 'results'} for “${query}”`;
-  }, [done, pageSize, pins.length, query, removedCount, totalPins]);
+    return `${visible}${suffix} ${pins.length === 1 && done ? 'result' : 'results'}${query ? ` for “${query}”` : ''}`;
+  }, [done, pageSize, pins.length, query, origin, removedCount, totalPins]);
 
   const selectedPins = useMemo(
     () => pins.filter((pin) => selectedIds.has(pin.id)),
     [pins, selectedIds],
   );
 
-  const replaceUrl = useCallback((nextQuery: string, nextSort: SortKey) => {
-    window.history.replaceState(null, '', urlFor(nextQuery, nextSort));
+  const replaceUrl = useCallback((nextQuery: string, nextSort: SortKey, nextOrigin: string) => {
+    window.history.replaceState(null, '', urlFor(nextQuery, nextSort, nextOrigin));
   }, []);
 
   const runSearch = useCallback(
-    async (nextQuery: string, nextSort: SortKey, { updateUrl = true } = {}) => {
+    async (nextQuery: string, nextSort: SortKey, { updateUrl = true, nextOrigin = originRef.current } = {}) => {
       const id = requestRef.current + 1;
       requestRef.current = id;
       setSelecting(false);
@@ -98,6 +106,7 @@ export default function CollectionSearch({
         const { pins: nextPins } = await getCollection({
           search: nextQuery || undefined,
           sort: nextSort,
+          origin: nextOrigin,
           limit: pageSize,
           offset: 0,
         });
@@ -106,8 +115,10 @@ export default function CollectionSearch({
         setPins(nextPins);
         setQuery(nextQuery);
         setSort(nextSort);
+        setOrigin(nextOrigin);
+        originRef.current = nextOrigin;
         setDone(nextPins.length < pageSize);
-        if (updateUrl) replaceUrl(nextQuery, nextSort);
+        if (updateUrl) replaceUrl(nextQuery, nextSort, nextOrigin);
       } catch (err) {
         if (requestRef.current !== id) return;
         setError(err instanceof Error ? err.message : 'Search failed.');
@@ -123,14 +134,17 @@ export default function CollectionSearch({
     loadingMoreRef.current = true;
     setLoading(true);
     setError('');
+    const requestId = requestRef.current;
     try {
       const current = pinsRef.current;
       const { pins: next } = await getCollection({
         search: query || undefined,
+        origin,
         sort,
         limit: pageSize,
         offset: current.length,
       });
+      if (requestRef.current !== requestId) return;
       const seen = new Set(current.map((pin) => pin.id));
       const fresh = next.filter((pin) => !seen.has(pin.id));
       if (fresh.length) {
@@ -148,7 +162,7 @@ export default function CollectionSearch({
       loadingMoreRef.current = false;
       setLoading(false);
     }
-  }, [pageSize, query, sort]);
+  }, [pageSize, query, sort, origin]);
 
   useEffect(() => {
     let mounted = true;
@@ -202,7 +216,7 @@ export default function CollectionSearch({
       const nextSort: SortKey = sortParam === 'updated' || sortParam === 'az' ? sortParam : 'created';
       skipInputEffectRef.current = true;
       setInputValue(nextQuery);
-      void runSearch(nextQuery, nextSort, { updateUrl: false });
+      void runSearch(nextQuery, nextSort, { updateUrl: false, nextOrigin: normalizeOrigin(params.get('origin')) ?? '' });
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
@@ -328,7 +342,8 @@ export default function CollectionSearch({
           name="q"
           value={inputValue}
           enterKeyHint="search"
-          placeholder={`Search ${totalPins.toLocaleString('en-US')} pins — name, series, origin, edition…`}
+          aria-label={`Search ${totalPins.toLocaleString('en-US')} pins by name, series, origin or edition`}
+          placeholder="Search pins…"
           onChange={(event) => setInputValue(event.target.value)}
           className="w-full rounded-full border border-line bg-white py-3.5 pl-12 pr-[6.5rem] text-base shadow-sm outline-none transition-colors placeholder:text-muted focus:border-sky/70"
         />
@@ -343,8 +358,8 @@ export default function CollectionSearch({
 
       <div className="mb-5 mt-8 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold sm:text-2xl">{heading}</h1>
-        <div className="flex items-center gap-4">
-          <p className="text-sm text-muted">
+        <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-3 sm:w-auto sm:gap-x-4">
+          <p className="w-full text-sm text-muted sm:w-auto">
             {resultText}
             {query && (
               <>
@@ -368,14 +383,32 @@ export default function CollectionSearch({
               {selecting ? 'Cancel' : 'Select'}
             </button>
           )}
-          <form className="flex items-center gap-2" onSubmit={(event) => event.preventDefault()}>
+          <div className="flex min-w-0 flex-1 flex-col items-start gap-1.5 sm:flex-none sm:flex-row sm:items-center sm:gap-2">
+            <label htmlFor="origin" className="text-xs text-muted">Origin</label>
+            <select
+              id="origin"
+              name="origin"
+              value={origin}
+              onChange={(event) => {
+                const nextOrigin = event.target.value;
+                originRef.current = nextOrigin;
+                setOrigin(nextOrigin);
+                void runSearch(normalizeQuery(inputValue), sort, { nextOrigin });
+              }}
+              className="w-full min-w-0 sm:w-[10.5rem] rounded-full border border-line bg-white py-1.5 pl-3 pr-8 text-sm outline-none transition-colors focus:border-sky/70"
+            >
+              <option value="">All origins</option>
+              {origins.map(value => <option key={value} value={value}>{value}</option>)}
+            </select>
+          </div>
+          <form className="flex min-w-0 flex-1 flex-col items-start gap-1.5 sm:flex-none sm:flex-row sm:items-center sm:gap-2" onSubmit={(event) => event.preventDefault()}>
             <label htmlFor="sort" className="text-xs text-muted">Sort</label>
             <select
               id="sort"
               name="sort"
               value={sort}
               onChange={onSortChange}
-              className="rounded-full border border-line bg-white py-1.5 pl-3 pr-8 text-sm outline-none transition-colors focus:border-sky/70"
+              className="w-full min-w-0 sm:w-[10.5rem] rounded-full border border-line bg-white py-1.5 pl-3 pr-8 text-sm outline-none transition-colors focus:border-sky/70"
             >
               {sortOptions.map((option) => (
                 <option key={option.value} value={option.value}>{option.label}</option>

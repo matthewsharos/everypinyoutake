@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
+import { normalizeOrigin } from './metadata';
 
-export type CollectedType = 'Collected' | 'For Trade' | 'ISO';
+export type CollectedType = 'Collected' | 'ISO';
 
 export interface Pin {
   id: number;
@@ -38,6 +39,7 @@ export interface GetCollectionOpts {
   type?: CollectedType;
   /** Free-text search across pin metadata. */
   search?: string;
+  origin?: string;
   /** Sort order for browse and search views. */
   sort?: SortKey;
   limit?: number | null;
@@ -87,8 +89,17 @@ async function getAllPages(
  * Public collection query — reads `pins` ONLY (pin_archive is admin-only and never shown publicly).
  */
 export async function getCollection(opts: GetCollectionOpts = {}): Promise<{ pins: Pin[]; total: number }> {
+  opts = { ...opts, origin: normalizeOrigin(opts.origin) ?? undefined };
   const { type, search, sort = 'created', limit = 60, offset = 0 } = opts;
   const s = (search ?? '').trim();
+
+  // Apply origin after the complete ranked search so filtering precedes pagination.
+  if (opts.origin && s) {
+    const result = await getCollection({ ...opts, origin: undefined, limit: null, offset: 0 });
+    const matches = result.pins.filter(pin => pin.origin === opts.origin);
+    return { pins: limit === null ? matches.slice(offset) : matches.slice(offset, offset + limit), total: matches.length };
+  }
+
 
   if (s) {
     // Ranked, typo-tolerant full-text search; falls back to ILIKE if the search
@@ -100,6 +111,7 @@ export async function getCollection(opts: GetCollectionOpts = {}): Promise<{ pin
           p_type: type ?? null,
           p_limit: pageLimit,
           p_offset: pageOffset,
+          p_sort: sort,
         });
         if (error || !Array.isArray(data)) return ilikeCollection(type, s, sort, pageLimit, pageOffset);
         return { pins: data as Pin[] };
@@ -113,6 +125,7 @@ export async function getCollection(opts: GetCollectionOpts = {}): Promise<{ pin
       p_type: type ?? null,
       p_limit: pageLimit,
       p_offset: offset,
+      p_sort: sort,
     });
     if (!error && Array.isArray(data)) {
       const pins = sortPins(data as Pin[], sort);
@@ -122,10 +135,10 @@ export async function getCollection(opts: GetCollectionOpts = {}): Promise<{ pin
   }
 
   if (limit === null) {
-    return getAllPages((pageLimit, pageOffset) => queryCollectionPage(type, sort, pageLimit, pageOffset));
+    return getAllPages((pageLimit, pageOffset) => queryCollectionPage(type, sort, pageLimit, pageOffset, opts.origin));
   }
 
-  return queryCollectionPage(type, sort, limit ?? 60, offset);
+  return queryCollectionPage(type, sort, limit ?? 60, offset, opts.origin);
 }
 
 async function queryCollectionPage(
@@ -133,12 +146,14 @@ async function queryCollectionPage(
   sort: SortKey,
   limit: number,
   offset: number,
+  origin?: string,
 ): Promise<{ pins: Pin[]; total: number }> {
   let q = supabase
     .from('pins')
     .select(COLUMNS, { count: 'exact' })
     .range(offset, offset + limit - 1);
   if (type) q = q.eq('collected_type', type);
+  if (origin) q = q.eq('origin', origin);
   q = orderBy(q, sort);
 
   const { data, count, error } = await q;
@@ -169,7 +184,6 @@ async function ilikeCollection(
 export interface CollectionStats {
   total: number;
   collected: number;
-  forTrade: number;
   iso: number;
 }
 
@@ -179,16 +193,14 @@ export async function getStats(): Promise<CollectionStats> {
     if (type) q = q.eq('collected_type', type);
     return q;
   };
-  const [all, collected, forTrade, iso] = await Promise.all([
+  const [all, collected, iso] = await Promise.all([
     head(),
     head('Collected'),
-    head('For Trade'),
     head('ISO'),
   ]);
   return {
     total: all.count ?? 0,
     collected: collected.count ?? 0,
-    forTrade: forTrade.count ?? 0,
     iso: iso.count ?? 0,
   };
 }
@@ -242,4 +254,19 @@ export async function getTikToks(limit = 12): Promise<TikTok[]> {
 export function tiktokId(url: string): string | null {
   const m = url.match(/\/video\/(\d+)/);
   return m ? m[1] : null;
+}
+
+/** Origins present in the public collection, including rows beyond the first page. */
+export async function getOrigins(): Promise<string[]> {
+  const origins = new Set<string>();
+  for (let offset = 0; ; offset += FETCH_PAGE_SIZE) {
+    const { data, error } = await supabase.from('pins').select('origin').order('id').range(offset, offset + FETCH_PAGE_SIZE - 1);
+    if (error) throw error;
+    for (const pin of data ?? []) {
+      const canonical = normalizeOrigin(pin.origin);
+      if (canonical) origins.add(canonical);
+    }
+    if (!data || data.length < FETCH_PAGE_SIZE) break;
+  }
+  return [...origins].sort((a, b) => a.localeCompare(b));
 }

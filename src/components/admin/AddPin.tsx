@@ -4,7 +4,7 @@ import { addFromArchive, addManual, recentArchivePins, searchArchive } from '../
 import PinForm from './PinForm';
 import { useToast } from './Toast';
 
-const TYPES: CollectedType[] = ['Collected', 'For Trade', 'ISO'];
+const TYPES: CollectedType[] = ['Collected', 'ISO'];
 const PAGE_SIZE = 90;
 const RECENT_LIMIT = 18;
 

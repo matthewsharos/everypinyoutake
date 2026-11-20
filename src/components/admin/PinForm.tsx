@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Pin, CollectedType } from '../../lib/pins';
 import { uploadPinImage, type PinInput } from '../../lib/adminApi';
 
-const TYPES: CollectedType[] = ['Collected', 'For Trade', 'ISO'];
+const TYPES: CollectedType[] = ['Collected', 'ISO'];
 
 interface Props {
   initial?: Partial<Pin>;
@@ -16,7 +16,7 @@ const label = 'mb-1 block text-[0.7rem] font-semibold uppercase tracking-wider t
 export default function PinForm({ initial = {}, submitLabel, onSubmit }: Props) {
   const [v, setV] = useState<PinInput>({
     pin_name: initial.pin_name ?? '',
-    collected_type: (initial.collected_type as CollectedType) ?? 'Collected',
+    collected_type: initial.collected_type === 'ISO' ? 'ISO' : 'Collected',
     series: initial.series ?? '',
     origin: initial.origin ?? '',
     edition: initial.edition ?? '',
@@ -124,7 +124,7 @@ export default function PinForm({ initial = {}, submitLabel, onSubmit }: Props) 
         </div>
         <div>
           <label className={label}>Edition</label>
-          <input className={field} value={v.edition ?? ''} onChange={(e) => set('edition', e.target.value)} placeholder="e.g. LE 300" />
+          <input className={field} value={v.edition ?? ''} onChange={(e) => set('edition', e.target.value)} placeholder="LE 300, LR, or OE" />
         </div>
         <div>
           <label className={label}>Year</label>
@@ -144,7 +144,7 @@ export default function PinForm({ initial = {}, submitLabel, onSubmit }: Props) 
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className={label}>External URL (PinPics)</label>
+          <label className={label}>Reference URL</label>
           <input className={field} value={v.external_url ?? ''} onChange={(e) => set('external_url', e.target.value)} />
         </div>
         <div>

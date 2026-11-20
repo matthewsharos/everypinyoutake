@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { normalizePinMetadata, MetadataValidationError } from '../../../lib/metadata';
 import { COOKIE, isAuthed } from '../../../lib/adminAuth';
 import { hasServiceKey, serviceClient } from '../../../lib/supabaseServer';
 
@@ -99,12 +100,17 @@ export const POST: APIRoute = async ({ request, cookies }) => {
     return json({ error: 'Bad request.' }, 400);
   }
 
+  const requestedType = body.op === 'addFromArchive' ? body.type : body.op === 'addManual' ? body.input?.collected_type : body.patch?.collected_type;
+  if (requestedType !== undefined && !['Collected', 'ISO'].includes(requestedType)) {
+    return json({ error: 'Choose Collected or ISO.' }, 400);
+  }
+
   try {
     switch (body.op) {
       case 'addFromArchive': {
         const sourcePin = await archivePinById(sb, body.archiveId);
         if (body.archiveId && !sourcePin) return json({ error: 'Archive pin not found.' }, 404);
-        const row = { ...copyFields(sourcePin ?? body.pin), collected_type: body.type };
+        const row = normalizePinMetadata({ ...copyFields(sourcePin ?? body.pin), collected_type: body.type });
         const externalId = normalizeExternalId(row.external_pin_id);
         if (externalId) {
           const existing = await findExistingPinByExternalId(sb, externalId);
@@ -118,13 +124,13 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         return json({ pin: data });
       }
       case 'addManual': {
-        const { data, error } = await sb.from('pins').insert(body.input).select(SELECT).single();
+        const { data, error } = await sb.from('pins').insert(normalizePinMetadata(body.input)).select(SELECT).single();
         if (error) throw error;
         await markArchiveSiteFlags(sb, data.id);
         return json({ pin: data });
       }
       case 'update': {
-        const { data, error } = await sb.from('pins').update(body.patch).eq('id', body.id).select(SELECT).single();
+        const { data, error } = await sb.from('pins').update(normalizePinMetadata(body.patch)).eq('id', body.id).select(SELECT).single();
         if (error) throw error;
         await markArchiveSiteFlags(sb, data.id);
         return json({ pin: data });
@@ -154,7 +160,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       }
       case 'bulkDelete': {
         if (!Array.isArray(body.ids)) return json({ error: 'Pin ids are required.' }, 400);
-        const ids = [...new Set(body.ids.map(Number))];
+        const ids = [...new Set<number>(body.ids.map(Number))];
         if (
           ids.length === 0
           || ids.length > 100
@@ -171,6 +177,6 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         return json({ error: 'Unknown action.' }, 400);
     }
   } catch (e) {
-    return json({ error: e instanceof Error ? e.message : 'Action failed.' }, 500);
+    return json({ error: e instanceof Error ? e.message : 'Action failed.' }, e instanceof MetadataValidationError ? 400 : 500);
   }
 };

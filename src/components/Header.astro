@@ -4,7 +4,6 @@ const path = Astro.url.pathname;
 const nav = [
   { href: '/', label: 'Collection' },
   { href: '/iso', label: 'ISO' },
-  { href: '/for-trade', label: 'For Trade' },
   { href: '/about', label: 'About' },
 ];
 const isCurrent = (href: string) =>
@@ -34,15 +33,18 @@ const isCurrent = (href: string) =>
       ))}
     </nav>
 
-    <SocialLinks class="-mr-1.5" includeAdmin />
+    <SocialLinks class="-mr-1.5 hidden sm:flex" includeAdmin />
   </div>
 
   <!-- compact mobile nav -->
-  <nav class="wrap flex items-center gap-5 overflow-x-auto pb-2.5 sm:hidden">
+  <div class="wrap flex items-center justify-between gap-2 pb-2 sm:hidden">
+  <nav class="flex items-center gap-3">
     {nav.map((n) => (
       <a href={n.href} class="nav-link whitespace-nowrap text-sm" aria-current={isCurrent(n.href) ? 'page' : undefined}>
         {n.label}
       </a>
     ))}
   </nav>
+  <SocialLinks class="-mr-1.5 shrink-0 [&_a]:w-8" includeAdmin />
+  </div>
 </header>

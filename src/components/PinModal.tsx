@@ -151,12 +151,7 @@ export default function PinModal({ pins, onPinUpdated, onPinDeleted, disabled = 
     pin.is_mystery && { cls: 'chip-mystery', label: 'Mystery' },
   ].filter(Boolean) as { cls: string; label: string }[];
 
-  const typeClass =
-    pin.collected_type === 'For Trade'
-      ? 'type-trade'
-      : pin.collected_type === 'ISO'
-        ? 'type-iso'
-        : 'type-collected';
+  const typeClass = pin.collected_type === 'ISO' ? 'type-iso' : 'type-collected';
 
   const rows: [string, string | number | null, boolean?][] = [
     ['Series', pin.series],
@@ -232,7 +227,7 @@ export default function PinModal({ pins, onPinUpdated, onPinDeleted, disabled = 
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-1.5 sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-label={pin.pin_name}
@@ -255,7 +250,7 @@ export default function PinModal({ pins, onPinUpdated, onPinDeleted, disabled = 
       <div
         ref={dialogRef}
         tabIndex={-1}
-        className="relative z-10 flex max-h-[92dvh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl bg-surface shadow-2xl outline-none sm:flex-row"
+        className="relative z-10 flex max-h-[96dvh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-surface sm:rounded-3xl shadow-2xl outline-none sm:flex-row"
       >
         <button
           type="button"
@@ -268,8 +263,8 @@ export default function PinModal({ pins, onPinUpdated, onPinDeleted, disabled = 
 
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={replaceImage} />
 
-        <div className="flex shrink-0 flex-col items-center justify-center gap-3 bg-gradient-to-b from-white to-[#f7f7f9] p-5 sm:w-[52%] sm:p-8">
-          <div className="relative flex h-[36vh] w-full items-center justify-center sm:h-[74vh]">
+        <div className="flex shrink-0 flex-col items-center justify-center gap-3 bg-gradient-to-b from-white to-[#f7f7f9] p-3 sm:w-[52%] sm:p-8">
+          <div className="relative flex h-[42dvh] w-full items-center justify-center sm:h-[74vh]">
             {activeImg ? (
               <>
                 <button
@@ -336,9 +331,9 @@ export default function PinModal({ pins, onPinUpdated, onPinDeleted, disabled = 
           )}
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6 sm:p-8">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto break-words p-4 sm:p-8">
           <div className="mb-4 flex flex-wrap items-center gap-2">
-            <span className={`type-tag ${typeClass}`}>{pin.collected_type ?? 'Collected'}</span>
+            <span className={`type-tag ${typeClass}`}>{pin.collected_type === 'ISO' ? 'ISO' : 'Collected'}</span>
             {flags.map((f) => (
               <span key={f.label} className={`chip ${f.cls}`}>{f.label}</span>
             ))}
@@ -401,7 +396,7 @@ export default function PinModal({ pins, onPinUpdated, onPinDeleted, disabled = 
             <PinForm key={pin.id} initial={pin} submitLabel="Save changes" onSubmit={saveEdit} />
           ) : (
             <>
-              <h2 className="font-display text-2xl font-semibold leading-tight">{pin.pin_name}</h2>
+              <h2 className="font-display text-2xl font-semibold leading-tight [overflow-wrap:anywhere]">{pin.pin_name}</h2>
 
               <dl className="mt-5 grid grid-cols-1 gap-x-6 gap-y-3.5 sm:grid-cols-2">
                 {rows
@@ -409,7 +404,7 @@ export default function PinModal({ pins, onPinUpdated, onPinDeleted, disabled = 
                   .map(([k, v, wide]) => (
                     <div key={k} className={wide ? 'sm:col-span-2' : ''}>
                       <dt className="text-[0.7rem] font-semibold uppercase tracking-wider text-muted">{k}</dt>
-                      <dd className="mt-0.5 text-sm">{v}</dd>
+                      <dd className="mt-0.5 text-sm [overflow-wrap:anywhere]">{v}</dd>
                     </div>
                   ))}
               </dl>
@@ -432,7 +427,7 @@ export default function PinModal({ pins, onPinUpdated, onPinDeleted, disabled = 
                 rel="noopener noreferrer"
                 className="btn btn-ghost text-sm"
               >
-                View on PinPics ↗
+                View pin reference ↗
               </a>
             )}
           </div>

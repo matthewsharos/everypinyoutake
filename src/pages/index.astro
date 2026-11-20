@@ -1,26 +1,31 @@
 ---
 import Base from '../layouts/Base.astro';
+import { normalizeOrigin } from '../lib/metadata';
 import AdminDock from '../components/admin/AdminDock.tsx';
 import CollectionSearch from '../components/CollectionSearch.tsx';
-import { getCollection, getStats, pinImage, thumbUrl, type Pin, type SortKey } from '../lib/pins';
+import { getCollection, getStats, getOrigins, pinImage, thumbUrl, type Pin, type SortKey } from '../lib/pins';
 
 const q = (Astro.url.searchParams.get('q') ?? '').trim();
+const origin = normalizeOrigin(Astro.url.searchParams.get('origin')) ?? '';
 const sortParam = Astro.url.searchParams.get('sort');
 const sort: SortKey = sortParam === 'updated' || sortParam === 'az' ? sortParam : 'created';
 
 let pins: Pin[] = [];
 let total = 0;
-let stats = { total: 0, collected: 0, forTrade: 0, iso: 0 };
+let stats = { total: 0, collected: 0, iso: 0 };
 let loadError = '';
+let origins: string[] = [];
 
 try {
-  const [collection, s] = await Promise.all([
-    getCollection({ search: q || undefined, sort, limit: 60 }),
+  const [collection, s, availableOrigins] = await Promise.all([
+    getCollection({ search: q || undefined, origin, sort, limit: 60 }),
     getStats(),
+    getOrigins(),
   ]);
   pins = collection.pins;
   total = collection.total;
   stats = s;
+  origins = availableOrigins;
 } catch (err) {
   loadError = err instanceof Error ? err.message : 'Failed to load pins.';
 }
@@ -41,6 +46,8 @@ const lcpImage = pins.length ? thumbUrl(pinImage(pins[0])) : null;
         initialPins={pins}
         initialQuery={q}
         initialSort={sort}
+        initialOrigin={origin}
+        origins={origins}
         totalPins={stats.total || total}
         pageSize={60}
       />
