@@ -4,7 +4,8 @@ import { getCollection, type Pin, type SortKey } from '../lib/pins';
 import { normalizeOrigin } from '../lib/metadata';
 import PinCard from './PinCard';
 import PinModal from './PinModal';
-import { ToastProvider } from './admin/Toast';
+import BulkDeleteDialog from './admin/BulkDeleteDialog';
+import { ToastProvider, useToast } from './admin/Toast';
 
 interface Props {
   initialPins: Pin[];
@@ -23,6 +24,7 @@ const sortOptions: { value: SortKey; label: string }[] = [
 ];
 
 const PRELOAD_MARGIN = 1200;
+const MAX_BULK_DELETE = 100;
 
 function normalizeQuery(value: string) {
   return value.trim();
@@ -37,7 +39,15 @@ function urlFor(query: string, sort: SortKey, origin: string) {
   return qs ? `/?${qs}` : '/';
 }
 
-export default function CollectionSearch({
+export default function CollectionSearch(props: Props) {
+  return (
+    <ToastProvider>
+      <CollectionSearchContent {...props} />
+    </ToastProvider>
+  );
+}
+
+function CollectionSearchContent({
   initialPins,
   initialQuery = '',
   initialSort,
@@ -46,6 +56,7 @@ export default function CollectionSearch({
   totalPins,
   pageSize = 60,
 }: Props) {
+  const toast = useToast();
   const [inputValue, setInputValue] = useState(initialQuery);
   const [query, setQuery] = useState(normalizeQuery(initialQuery));
   const [sort, setSort] = useState<SortKey>(initialSort);
@@ -56,14 +67,18 @@ export default function CollectionSearch({
   const [error, setError] = useState('');
   const [authed, setAuthed] = useState(false);
   const [selecting, setSelecting] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
+  const [selection, setSelection] = useState<Map<number, Pin>>(() => new Map());
   const [confirmingBulkDelete, setConfirmingBulkDelete] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
-  const [bulkSuccess, setBulkSuccess] = useState('');
+  const [bulkError, setBulkError] = useState('');
   const [removedCount, setRemovedCount] = useState(0);
 
   const requestRef = useRef(0);
+  const searchingRef = useRef(false);
   const loadingMoreRef = useRef(false);
+  const bulkDeletingRef = useRef(false);
+  const paginationRevisionRef = useRef(0);
+  const removedIdsRef = useRef(new Set<number>());
   const pinsRef = useRef(initialPins);
   const doneRef = useRef(done);
   const sortRef = useRef(initialSort);
@@ -71,6 +86,9 @@ export default function CollectionSearch({
   const skipInputEffectRef = useRef(true);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const selectButtonRef = useRef<HTMLButtonElement>(null);
+  const doneButtonRef = useRef<HTMLButtonElement>(null);
+  const reviewButtonRef = useRef<HTMLButtonElement>(null);
 
   pinsRef.current = pins;
   doneRef.current = done;
@@ -84,10 +102,8 @@ export default function CollectionSearch({
     return `${visible}${suffix} ${pins.length === 1 && done ? 'result' : 'results'}${query ? ` for “${query}”` : ''}`;
   }, [done, pageSize, pins.length, query, origin, removedCount, totalPins]);
 
-  const selectedPins = useMemo(
-    () => pins.filter((pin) => selectedIds.has(pin.id)),
-    [pins, selectedIds],
-  );
+  const shownUnselected = selecting ? pins.filter((pin) => !selection.has(pin.id)) : [];
+  const canSelectShown = shownUnselected.length > 0 && selection.size + shownUnselected.length <= MAX_BULK_DELETE;
 
   const replaceUrl = useCallback((nextQuery: string, nextSort: SortKey, nextOrigin: string) => {
     window.history.replaceState(null, '', urlFor(nextQuery, nextSort, nextOrigin));
@@ -97,9 +113,7 @@ export default function CollectionSearch({
     async (nextQuery: string, nextSort: SortKey, { updateUrl = true, nextOrigin = originRef.current } = {}) => {
       const id = requestRef.current + 1;
       requestRef.current = id;
-      setSelecting(false);
-      setSelectedIds(new Set());
-      setConfirmingBulkDelete(false);
+      searchingRef.current = true;
       setLoading(true);
       setError('');
       try {
@@ -111,8 +125,9 @@ export default function CollectionSearch({
           offset: 0,
         });
         if (requestRef.current !== id) return;
-        pinsRef.current = nextPins;
-        setPins(nextPins);
+        const availablePins = nextPins.filter((pin) => !removedIdsRef.current.has(pin.id));
+        pinsRef.current = availablePins;
+        setPins(availablePins);
         setQuery(nextQuery);
         setSort(nextSort);
         setOrigin(nextOrigin);
@@ -123,18 +138,23 @@ export default function CollectionSearch({
         if (requestRef.current !== id) return;
         setError(err instanceof Error ? err.message : 'Search failed.');
       } finally {
-        if (requestRef.current === id) setLoading(false);
+        if (requestRef.current === id) {
+          searchingRef.current = false;
+          setLoading(false);
+        }
       }
     },
     [pageSize, replaceUrl],
   );
 
   const loadMore = useCallback(async () => {
-    if (loadingMoreRef.current || doneRef.current) return;
+    if (searchingRef.current || loadingMoreRef.current || doneRef.current || bulkDeletingRef.current) return;
     loadingMoreRef.current = true;
     setLoading(true);
     setError('');
     const requestId = requestRef.current;
+    const revision = paginationRevisionRef.current;
+    const isCurrent = () => requestRef.current === requestId && paginationRevisionRef.current === revision;
     try {
       const current = pinsRef.current;
       const { pins: next } = await getCollection({
@@ -144,7 +164,7 @@ export default function CollectionSearch({
         limit: pageSize,
         offset: current.length,
       });
-      if (requestRef.current !== requestId) return;
+      if (!isCurrent()) return;
       const seen = new Set(current.map((pin) => pin.id));
       const fresh = next.filter((pin) => !seen.has(pin.id));
       if (fresh.length) {
@@ -157,27 +177,30 @@ export default function CollectionSearch({
         setDone(true);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load more pins.');
+      if (isCurrent()) setError(err instanceof Error ? err.message : 'Could not load more pins.');
     } finally {
       loadingMoreRef.current = false;
-      setLoading(false);
+      if (requestRef.current === requestId) setLoading(false);
     }
   }, [pageSize, query, sort, origin]);
 
   useEffect(() => {
     let mounted = true;
+    let authChanged = false;
     fetch('/api/admin-session')
       .then((response) => response.json())
-      .then((data) => mounted && setAuthed(!!data.authed))
-      .catch(() => mounted && setAuthed(false));
+      .then((data) => mounted && !authChanged && setAuthed(!!data.authed))
+      .catch(() => mounted && !authChanged && setAuthed(false));
 
     const onAuth = (event: Event) => {
+      authChanged = true;
       const nextAuthed = !!(event as CustomEvent<{ authed?: boolean }>).detail?.authed;
       setAuthed(nextAuthed);
       if (!nextAuthed) {
         setSelecting(false);
-        setSelectedIds(new Set());
+        setSelection(new Map());
         setConfirmingBulkDelete(false);
+        setBulkError('');
       }
     };
     window.addEventListener('epyt:admin-auth', onAuth);
@@ -193,6 +216,7 @@ export default function CollectionSearch({
       return;
     }
     const nextQuery = normalizeQuery(inputValue);
+    if (nextQuery === query) return;
     if (nextQuery.length === 1) {
       if (query) {
         const timeout = window.setTimeout(() => {
@@ -235,7 +259,7 @@ export default function CollectionSearch({
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
     };
-  }, [loadMore]);
+  }, [loadMore, pins.length, bulkDeleting]);
 
   const updatePin = useCallback((updated: Pin) => {
     setPins((current) => {
@@ -245,59 +269,73 @@ export default function CollectionSearch({
     });
   }, []);
 
-  const deletePin = useCallback((deleted: Pin) => {
+  const removeFromGrid = useCallback((deleted: Pin[]) => {
+    const ids = new Set(deleted.map((pin) => pin.id));
+    ids.forEach((id) => removedIdsRef.current.add(id));
+    paginationRevisionRef.current += 1;
     setPins((current) => {
-      const next = current.filter((pin) => pin.id !== deleted.id);
+      const next = current.filter((pin) => !ids.has(pin.id));
       pinsRef.current = next;
       return next;
     });
-    setRemovedCount((count) => count + 1);
+    setRemovedCount((count) => count + ids.size);
   }, []);
 
-  const cancelSelection = () => {
+  const deletePin = useCallback((deleted: Pin) => removeFromGrid([deleted]), [removeFromGrid]);
+
+  const endSelection = () => {
     setSelecting(false);
-    setSelectedIds(new Set());
+    setSelection(new Map());
     setConfirmingBulkDelete(false);
-    setError('');
+    setBulkError('');
+    requestAnimationFrame(() => selectButtonRef.current?.focus({ preventScroll: true }));
   };
 
   const toggleSelected = (pin: Pin) => {
-    setBulkSuccess('');
-    setSelectedIds((current) => {
-      const next = new Set(current);
-      if (next.has(pin.id)) {
-        next.delete(pin.id);
-      } else if (next.size < 100) {
-        next.add(pin.id);
-      } else {
-        setError('You can delete up to 100 pins at once.');
-      }
+    setBulkError('');
+    setSelection((current) => {
+      if (!current.has(pin.id) && current.size >= MAX_BULK_DELETE) return current;
+      const next = new Map(current);
+      if (next.has(pin.id)) next.delete(pin.id);
+      else next.set(pin.id, pin);
       return next;
+    });
+  };
+
+  const selectShown = () => {
+    if (!canSelectShown) return;
+    setSelection((current) => {
+      const next = new Map(current);
+      for (const pin of shownUnselected) next.set(pin.id, pin);
+      return next.size <= MAX_BULK_DELETE ? next : current;
+    });
+  };
+
+  const closeReview = (focusReview = true) => {
+    setConfirmingBulkDelete(false);
+    setBulkError('');
+    requestAnimationFrame(() => {
+      if (focusReview) reviewButtonRef.current?.focus({ preventScroll: true });
+      else selectButtonRef.current?.focus({ preventScroll: true });
     });
   };
 
   const bulkDeleteSelected = async () => {
-    const ids = selectedPins.map((pin) => pin.id);
-    if (ids.length === 0 || bulkDeleting) return;
+    const ids = [...selection.keys()];
+    if (!authed || ids.length === 0 || bulkDeletingRef.current) return;
+    bulkDeletingRef.current = true;
+    paginationRevisionRef.current += 1;
     setBulkDeleting(true);
-    setError('');
+    setBulkError('');
     try {
       const deleted = await removePins(ids);
-      const deletedIds = new Set(deleted.map((pin) => pin.id));
-      setPins((current) => {
-        const next = current.filter((pin) => !deletedIds.has(pin.id));
-        pinsRef.current = next;
-        return next;
-      });
-      setRemovedCount((count) => count + deletedIds.size);
-      setBulkSuccess(`${deletedIds.size} ${deletedIds.size === 1 ? 'pin' : 'pins'} removed from the collection.`);
-      setSelecting(false);
-      setSelectedIds(new Set());
-      setConfirmingBulkDelete(false);
+      removeFromGrid(deleted);
+      toast.success(`${deleted.length} ${deleted.length === 1 ? 'pin' : 'pins'} removed from the collection.`);
+      endSelection();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not delete the selected pins.');
-      setConfirmingBulkDelete(false);
+      setBulkError(err instanceof Error ? err.message : 'Could not delete the selected pins.');
     } finally {
+      bulkDeletingRef.current = false;
       setBulkDeleting(false);
     }
   };
@@ -323,7 +361,7 @@ export default function CollectionSearch({
   };
 
   return (
-    <ToastProvider>
+    <>
       <form method="get" action="/" id="search" className="relative mx-auto max-w-2xl" onSubmit={onSubmit}>
         <svg
           className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted"
@@ -357,7 +395,24 @@ export default function CollectionSearch({
       </form>
 
       <div className="mb-5 mt-8 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold sm:text-2xl">{heading}</h1>
+        <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-2 sm:w-auto">
+          <h1 className="text-xl font-semibold sm:text-2xl">{heading}</h1>
+          {authed && (
+            <button
+              ref={selectButtonRef}
+              type="button"
+              aria-pressed={selecting}
+              onClick={() => (selecting ? endSelection() : setSelecting(true))}
+              className="btn btn-ghost min-h-10 px-3 py-1.5 text-sm aria-pressed:border-sun aria-pressed:bg-sun/20 aria-pressed:text-text"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="4" y="4" width="16" height="16" rx="4" />
+                <path d="m8 12 2.5 2.5L16 9" />
+              </svg>
+              Select pins
+            </button>
+          )}
+        </div>
         <div className="flex w-full flex-wrap items-center gap-x-3 gap-y-3 sm:w-auto sm:gap-x-4">
           <p className="w-full text-sm text-muted sm:w-auto">
             {resultText}
@@ -370,19 +425,6 @@ export default function CollectionSearch({
               </>
             )}
           </p>
-          {authed && (
-            <button
-              type="button"
-              onClick={() => (selecting ? cancelSelection() : setSelecting(true))}
-              className={`rounded-full border px-3 py-1.5 text-sm font-semibold transition ${
-                selecting
-                  ? 'border-magenta bg-magenta/5 text-magenta'
-                  : 'border-line bg-white/60 text-text hover:border-sky hover:text-sky'
-              }`}
-            >
-              {selecting ? 'Cancel' : 'Select'}
-            </button>
-          )}
           <div className="flex min-w-0 flex-1 flex-col items-start gap-1.5 sm:flex-none sm:flex-row sm:items-center sm:gap-2">
             <label htmlFor="origin" className="text-xs text-muted">Origin</label>
             <select
@@ -424,14 +466,54 @@ export default function CollectionSearch({
         </div>
       )}
 
-      {bulkSuccess && (
-        <div className="mb-5 rounded-2xl border border-[#2f8f7c]/35 bg-[#2f8f7c]/10 p-4 text-sm font-semibold text-[#2f8f7c]">
-          {bulkSuccess}
+      {selecting && (
+        <div className="mb-3 flex min-h-10 flex-wrap items-center justify-between gap-x-3 border-t border-line pt-2">
+          <p className="text-sm text-text/75">
+            {selection.size === MAX_BULK_DELETE ? '100-pin limit reached.' : 'Choose pins from the grid.'}
+          </p>
+          {canSelectShown && (
+            <button type="button" onClick={selectShown} className="min-h-10 text-sm font-semibold text-text underline-offset-4 hover:underline">
+              Select shown ({shownUnselected.length})
+            </button>
+          )}
+        </div>
+      )}
+
+      {selecting && (
+        <div data-pin-selection className="pointer-events-none fixed inset-x-0 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[80] flex justify-center px-3 sm:px-4">
+          <div className="pointer-events-auto flex w-full max-w-lg flex-wrap items-center justify-between gap-x-2 gap-y-1 rounded-2xl border border-line bg-white/95 p-2 pl-3 shadow-xl backdrop-blur motion-safe:animate-toast-in sm:pl-5">
+            <output className="shrink-0 text-sm font-bold tabular-nums">{selection.size} selected</output>
+            <div className="ml-auto flex items-center gap-1 sm:gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setSelection(new Map());
+                  doneButtonRef.current?.focus({ preventScroll: true });
+                }}
+                disabled={selection.size === 0}
+                className="min-h-11 rounded-full px-2 text-sm font-semibold enabled:hover:bg-ink-2 disabled:opacity-50"
+              >
+                Clear
+              </button>
+              <button ref={doneButtonRef} type="button" onClick={endSelection} className="min-h-11 rounded-full px-2 text-sm font-semibold hover:bg-ink-2">
+                Done
+              </button>
+              <button
+                ref={reviewButtonRef}
+                type="button"
+                disabled={selection.size === 0}
+                onClick={() => setConfirmingBulkDelete(true)}
+                className="btn btn-ghost min-h-11 border-[#8c4027]/25 px-3 text-sm text-[#8c4027] enabled:hover:border-[#8c4027] enabled:hover:text-[#8c4027] disabled:opacity-50 sm:px-4"
+              >
+                Review delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
       {pins.length === 0 ? (
-        <div className="grid place-items-center rounded-2xl border border-dashed border-line py-20 text-center">
+        done && <div className="grid place-items-center rounded-2xl border border-dashed border-line py-20 text-center">
           <p className="text-muted">{query ? `No pins match “${query}”.` : 'No pins yet.'}</p>
         </div>
       ) : (
@@ -444,87 +526,41 @@ export default function CollectionSearch({
                 index={index}
                 eager={index < 10}
                 selectionMode={selecting}
-                selected={selectedIds.has(pin.id)}
+                selected={selection.has(pin.id)}
+                selectionFull={selection.size === MAX_BULK_DELETE}
                 onToggleSelected={toggleSelected}
               />
             ))}
           </div>
 
           <PinModal pins={pins} onPinUpdated={updatePin} onPinDeleted={deletePin} disabled={selecting} />
-
-          {!done && <div ref={sentinelRef} aria-hidden="true" className="h-px w-full" />}
-          {!done && (
-            <div className="flex justify-center py-8">
-              <button type="button" className="btn btn-ghost" onClick={loadMore} disabled={loading}>
-                {loading ? 'Loading more pins...' : 'See More'}
-              </button>
-            </div>
-          )}
         </>
       )}
 
-      {selecting && (
-        <div className="fixed inset-x-0 bottom-4 z-[190] flex justify-center px-4">
-          <div className="flex w-full max-w-md items-center gap-3 rounded-full border border-line bg-white/95 p-2 pl-5 shadow-2xl backdrop-blur">
-            <span className="flex-1 text-sm font-semibold">
-              {selectedIds.size} selected
-            </span>
-            <button type="button" onClick={cancelSelection} className="px-2 py-2 text-sm font-semibold text-muted">
-              Cancel
-            </button>
-            <button
-              type="button"
-              disabled={selectedIds.size === 0}
-              onClick={() => setConfirmingBulkDelete(true)}
-              className="rounded-full bg-magenta px-4 py-2 text-sm font-semibold text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Delete
+      {!done && (
+        <>
+          <div ref={sentinelRef} aria-hidden="true" className="h-px w-full" />
+          <div className="flex justify-center py-8">
+            <button type="button" className="btn btn-ghost" onClick={loadMore} disabled={loading || bulkDeleting}>
+              {loading ? 'Loading more pins...' : 'See More'}
             </button>
           </div>
-        </div>
+        </>
       )}
 
       {confirmingBulkDelete && (
-        <div
-          className="fixed inset-0 z-[230] flex items-center justify-center p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="bulk-delete-title"
-        >
-          <button
-            type="button"
-            aria-label="Cancel bulk delete"
-            onClick={() => setConfirmingBulkDelete(false)}
-            className="absolute inset-0 bg-[rgba(42,36,28,0.58)] backdrop-blur-sm"
-          />
-          <div className="relative w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
-            <h2 id="bulk-delete-title" className="font-display text-2xl font-semibold">
-              Delete {selectedIds.size} {selectedIds.size === 1 ? 'pin' : 'pins'}?
-            </h2>
-            <p className="mt-3 text-sm leading-relaxed text-muted">
-              They will be removed from the collection, but their reference records will stay in the archive.
-            </p>
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                disabled={bulkDeleting}
-                onClick={() => setConfirmingBulkDelete(false)}
-                className="btn btn-ghost"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={bulkDeleting}
-                onClick={bulkDeleteSelected}
-                className="rounded-full bg-magenta px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-105 disabled:cursor-wait disabled:opacity-60"
-              >
-                {bulkDeleting ? 'Deleting…' : `Delete ${selectedIds.size}`}
-              </button>
-            </div>
-          </div>
-        </div>
+        <BulkDeleteDialog
+          pins={[...selection.values()]}
+          busy={bulkDeleting}
+          error={bulkError}
+          onCancel={() => closeReview()}
+          onRemove={(pin) => {
+            toggleSelected(pin);
+            if (selection.size === 1) closeReview(false);
+          }}
+          onConfirm={bulkDeleteSelected}
+        />
       )}
-    </ToastProvider>
+    </>
   );
 }

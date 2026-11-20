@@ -13,6 +13,7 @@ interface Props {
   eager?: boolean;
   selectionMode?: boolean;
   selected?: boolean;
+  selectionFull?: boolean;
   onToggleSelected?: (pin: Pin) => void;
 }
 
@@ -22,6 +23,7 @@ export default function PinCard({
   eager = false,
   selectionMode = false,
   selected = false,
+  selectionFull = false,
   onToggleSelected,
 }: Props) {
   const img = pinImage(pin);
@@ -35,23 +37,23 @@ export default function PinCard({
   ].filter(Boolean) as { cls: string; label: string }[];
 
   const meta = [pin.origin, pin.year ? String(pin.year) : null].filter(Boolean).join(' · ');
+  const selectionDisabled = selectionMode && selectionFull && !selected;
 
   return (
     <article
-      className={`pin-card cursor-pointer ${
-        selected ? 'border-magenta ring-2 ring-magenta/70 shadow-lg' : ''
-      }`}
+      className="pin-card cursor-pointer aria-disabled:cursor-default"
       data-pin-id={pin.id}
       data-pin-index={index}
-      role="button"
+      role={selectionMode ? 'checkbox' : 'button'}
       tabIndex={0}
-      aria-label={selectionMode ? `${selected ? 'Deselect' : 'Select'} ${pin.pin_name}` : `View details for ${pin.pin_name}`}
-      aria-pressed={selectionMode ? selected : undefined}
+      aria-label={selectionMode ? pin.pin_name : `View details for ${pin.pin_name}`}
+      aria-checked={selectionMode ? selected : undefined}
+      aria-disabled={selectionDisabled || undefined}
       onClick={
         selectionMode
           ? (event) => {
               event.stopPropagation();
-              onToggleSelected?.(pin);
+              if (!selectionDisabled) onToggleSelected?.(pin);
             }
           : undefined
       }
@@ -61,7 +63,7 @@ export default function PinCard({
               if (event.key !== 'Enter' && event.key !== ' ') return;
               event.preventDefault();
               event.stopPropagation();
-              onToggleSelected?.(pin);
+              if (!event.repeat && !selectionDisabled) onToggleSelected?.(pin);
             }
           : undefined
       }
@@ -69,13 +71,15 @@ export default function PinCard({
       {selectionMode && (
         <span
           aria-hidden="true"
-          className={`absolute left-2.5 top-2.5 z-20 grid h-7 w-7 place-items-center rounded-full border-2 text-sm font-bold shadow-sm transition ${
+          className={`absolute left-2.5 top-2.5 z-20 grid size-7 place-items-center rounded-full border shadow-sm motion-safe:transition-colors ${
             selected
-              ? 'border-magenta bg-magenta text-white'
-              : 'border-white bg-white/90 text-transparent ring-1 ring-black/10'
+              ? 'border-sun bg-sun text-[#4a3a0c]'
+              : 'border-text/25 bg-white/95 text-transparent'
           }`}
         >
-          ✓
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m5 12 4.5 4.5L19 7" />
+          </svg>
         </span>
       )}
       <div className="pin-shot">

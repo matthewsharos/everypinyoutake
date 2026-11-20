@@ -24,13 +24,18 @@ begin
     raise exception 'Select between 1 and 100 pins.';
   end if;
 
+  -- Keep overlapping requests from backing up or deleting the same rows.
   select count(*)
   into v_found
-  from public.pins
-  where id = any(v_ids);
+  from (
+    select id from public.pins
+    where id = any(v_ids)
+    order by id
+    for update
+  ) locked_pins;
 
   if v_found <> cardinality(v_ids) then
-    raise exception 'One or more selected pins are no longer in the collection.';
+    raise no_data_found using message = 'One or more selected pins are no longer in the collection.';
   end if;
 
   insert into public.pins_backup (kind, pin_count, data)

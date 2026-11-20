@@ -100,6 +100,9 @@
     background: rgba(255, 255, 255, 0.6);
   }
   .btn-ghost:hover { border-color: var(--color-sky); color: var(--color-sky); }
+  .btn-danger { background: #8c4027; color: white; }
+  .btn-danger:enabled:hover { background: #74331e; }
+  .btn-danger:disabled { opacity: 0.6; }
 
   /* ---- pin card ---- */
   .pin-card {
@@ -135,6 +138,15 @@
     transition: transform 0.25s ease;
   }
   .pin-card:hover .pin-shot img { transform: scale(1.04) rotate(-1.5deg); }
+  .pin-card[role='checkbox'] { scroll-margin-block-end: 7rem; }
+  .pin-card[aria-checked='true'] {
+    border-color: var(--color-sun);
+    box-shadow: 0 0 0 2px var(--color-sun);
+  }
+  .pin-card[role='checkbox']:focus-visible {
+    outline: 2px solid #286a8c;
+    outline-offset: 3px;
+  }
   .pin-shot--empty {
     color: #ddd2bf;
     font-family: var(--font-display);
@@ -226,6 +238,10 @@
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 .animate-toast-in { animation: toast-in 0.22s cubic-bezier(0.22, 1, 0.36, 1); }
+
+body:has([data-pin-selection]) [data-admin-dock] { visibility: hidden; }
+section.wrap:has([data-pin-selection]) { padding-bottom: 7rem; }
+body:has(dialog[data-bulk-delete][open]) { overflow: hidden; }
 
 /* Compact phone gutters give the artwork room without cropping the pins. */
 @media (max-width: 639px) {

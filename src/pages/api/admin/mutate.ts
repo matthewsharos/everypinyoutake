@@ -96,6 +96,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   let body: any = {};
   try {
     body = await request.json();
+    if (!body || typeof body !== 'object') return json({ error: 'Bad request.' }, 400);
   } catch {
     return json({ error: 'Bad request.' }, 400);
   }
@@ -160,7 +161,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
       }
       case 'bulkDelete': {
         if (!Array.isArray(body.ids)) return json({ error: 'Pin ids are required.' }, 400);
-        const ids = [...new Set<number>(body.ids.map(Number))];
+        const ids = [...new Set<number>(body.ids.map((id: unknown) =>
+          typeof id === 'number' || (typeof id === 'string' && /^\d+$/.test(id.trim())) ? Number(id) : NaN,
+        ))];
         if (
           ids.length === 0
           || ids.length > 100
@@ -170,6 +173,9 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         }
 
         const { data, error } = await sb.rpc('admin_remove_pins', { p_ids: ids });
+        if (error?.code === 'P0002' || error?.message === 'One or more selected pins are no longer in the collection.') {
+          return json({ error: 'A selected pin is no longer in the collection. Refresh the page and select the pins again.' }, 409);
+        }
         if (error) throw error;
         return json({ pins: data ?? [] });
       }

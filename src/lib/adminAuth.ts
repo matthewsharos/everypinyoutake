@@ -14,5 +14,5 @@ export async function sessionToken(): Promise<string> {
 }
 
 export async function isAuthed(cookieValue: string | undefined): Promise<boolean> {
-  return !!cookieValue && cookieValue === (await sessionToken());
+  return !!PIN && !!cookieValue && cookieValue === (await sessionToken());
 }
