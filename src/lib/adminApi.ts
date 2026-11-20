@@ -100,8 +100,8 @@ export async function deletePin(id: number): Promise<Pin> {
   return (await mutate('delete', { id })).pin as Pin;
 }
 
-export async function deletePins(ids: number[]): Promise<Pin[]> {
-  return (await mutate('bulkDelete', { ids })).pins as Pin[];
+export async function deletePins(ids: number[]): Promise<Pick<Pin, 'id'>[]> {
+  return (await mutate('bulkDelete', { ids })).pins as Pick<Pin, 'id'>[];
 }
 
 /**

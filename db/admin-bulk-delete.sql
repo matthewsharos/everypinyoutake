@@ -10,6 +10,7 @@ as $$
 declare
   v_ids bigint[];
   v_found integer;
+  v_removed integer := 0;
   v_pin public.pins%rowtype;
 begin
   select array_agg(id order by id)
@@ -20,8 +21,8 @@ begin
     where id is not null
   ) unique_ids;
 
-  if coalesce(cardinality(v_ids), 0) < 1 or cardinality(v_ids) > 100 then
-    raise exception 'Select between 1 and 100 pins.';
+  if coalesce(cardinality(v_ids), 0) < 1 or cardinality(v_ids) > 1000 then
+    raise exception 'Select between 1 and 1,000 pins.';
   end if;
 
   -- Keep overlapping requests from backing up or deleting the same rows.
@@ -48,8 +49,13 @@ begin
     where p.id = any(v_ids)
     returning p.*
   loop
+    v_removed := v_removed + 1;
     return next v_pin;
   end loop;
+
+  if v_removed <> cardinality(v_ids) then
+    raise exception 'Could not remove every selected pin.';
+  end if;
 
   perform public.refresh_pin_archive_site_flags();
   return;
@@ -60,4 +66,4 @@ revoke all on function public.admin_remove_pins(bigint[]) from public, anon, aut
 grant execute on function public.admin_remove_pins(bigint[]) to service_role;
 
 comment on function public.admin_remove_pins(bigint[]) is
-  'Atomically backs up and removes 1-100 owned pins while preserving pin_archive rows.';
+  'Atomically backs up and removes up to 1,000 owned pins while preserving pin_archive rows.';

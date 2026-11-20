@@ -1,4 +1,5 @@
 import type { APIRoute } from 'astro';
+import { MAX_BULK_DELETE } from '../../../lib/bulkDelete';
 import { normalizePinMetadata, MetadataValidationError } from '../../../lib/metadata';
 import { COOKIE, isAuthed } from '../../../lib/adminAuth';
 import { hasServiceKey, serviceClient } from '../../../lib/supabaseServer';
@@ -166,18 +167,19 @@ export const POST: APIRoute = async ({ request, cookies }) => {
         ))];
         if (
           ids.length === 0
-          || ids.length > 100
+          || ids.length > MAX_BULK_DELETE
           || ids.some((id) => !Number.isSafeInteger(id) || id <= 0)
         ) {
-          return json({ error: 'Select between 1 and 100 valid pins.' }, 400);
+          return json({ error: `Select between 1 and ${MAX_BULK_DELETE.toLocaleString('en-US')} valid pins.` }, 400);
         }
 
-        const { data, error } = await sb.rpc('admin_remove_pins', { p_ids: ids });
+        const { error } = await sb.rpc('admin_remove_pins', { p_ids: ids }).select('id');
         if (error?.code === 'P0002' || error?.message === 'One or more selected pins are no longer in the collection.') {
           return json({ error: 'A selected pin is no longer in the collection. Refresh the page and select the pins again.' }, 409);
         }
         if (error) throw error;
-        return json({ pins: data ?? [] });
+        // The RPC commits the entire batch. PostgREST may limit the returned rows.
+        return json({ pins: ids.map((id) => ({ id })) });
       }
       default:
         return json({ error: 'Unknown action.' }, 400);

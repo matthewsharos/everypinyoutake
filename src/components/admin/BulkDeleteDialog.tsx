@@ -14,7 +14,7 @@ export default function BulkDeleteDialog({ pins, busy, error, onCancel, onRemove
   const dialogRef = useRef<HTMLDialogElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const count = pins.length;
-  const label = `${count} ${count === 1 ? 'pin' : 'pins'}`;
+  const label = `${count.toLocaleString('en-US')} ${count === 1 ? 'pin' : 'pins'}`;
 
   useEffect(() => {
     const dialog = dialogRef.current;

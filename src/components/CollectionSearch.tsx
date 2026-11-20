@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { deletePins as removePins } from '../lib/adminApi';
+import { MAX_BULK_DELETE } from '../lib/bulkDelete';
 import { getCollection, type Pin, type SortKey } from '../lib/pins';
 import { normalizeOrigin } from '../lib/metadata';
 import PinCard from './PinCard';
@@ -24,7 +25,6 @@ const sortOptions: { value: SortKey; label: string }[] = [
 ];
 
 const PRELOAD_MARGIN = 1200;
-const MAX_BULK_DELETE = 100;
 
 function normalizeQuery(value: string) {
   return value.trim();
@@ -103,7 +103,7 @@ function CollectionSearchContent({
   }, [done, pageSize, pins.length, query, origin, removedCount, totalPins]);
 
   const shownUnselected = selecting ? pins.filter((pin) => !selection.has(pin.id)) : [];
-  const canSelectShown = shownUnselected.length > 0 && selection.size + shownUnselected.length <= MAX_BULK_DELETE;
+  const shownSelectionCount = Math.min(shownUnselected.length, MAX_BULK_DELETE - selection.size);
 
   const replaceUrl = useCallback((nextQuery: string, nextSort: SortKey, nextOrigin: string) => {
     window.history.replaceState(null, '', urlFor(nextQuery, nextSort, nextOrigin));
@@ -269,7 +269,7 @@ function CollectionSearchContent({
     });
   }, []);
 
-  const removeFromGrid = useCallback((deleted: Pin[]) => {
+  const removeFromGrid = useCallback((deleted: Pick<Pin, 'id'>[]) => {
     const ids = new Set(deleted.map((pin) => pin.id));
     ids.forEach((id) => removedIdsRef.current.add(id));
     paginationRevisionRef.current += 1;
@@ -303,11 +303,12 @@ function CollectionSearchContent({
   };
 
   const selectShown = () => {
-    if (!canSelectShown) return;
     setSelection((current) => {
       const next = new Map(current);
-      for (const pin of shownUnselected) next.set(pin.id, pin);
-      return next.size <= MAX_BULK_DELETE ? next : current;
+      const remaining = MAX_BULK_DELETE - current.size;
+      const additions = pins.filter((pin) => !current.has(pin.id)).slice(0, remaining);
+      for (const pin of additions) next.set(pin.id, pin);
+      return next;
     });
   };
 
@@ -316,7 +317,7 @@ function CollectionSearchContent({
     setBulkError('');
     requestAnimationFrame(() => {
       if (focusReview) reviewButtonRef.current?.focus({ preventScroll: true });
-      else selectButtonRef.current?.focus({ preventScroll: true });
+      else doneButtonRef.current?.focus({ preventScroll: true });
     });
   };
 
@@ -330,8 +331,9 @@ function CollectionSearchContent({
     try {
       const deleted = await removePins(ids);
       removeFromGrid(deleted);
-      toast.success(`${deleted.length} ${deleted.length === 1 ? 'pin' : 'pins'} removed from the collection.`);
-      endSelection();
+      toast.success(`${deleted.length.toLocaleString('en-US')} ${deleted.length === 1 ? 'pin' : 'pins'} removed from the collection.`);
+      setSelection(new Map());
+      closeReview(false);
     } catch (err) {
       setBulkError(err instanceof Error ? err.message : 'Could not delete the selected pins.');
     } finally {
@@ -469,11 +471,13 @@ function CollectionSearchContent({
       {selecting && (
         <div className="mb-3 flex min-h-10 flex-wrap items-center justify-between gap-x-3 border-t border-line pt-2">
           <p className="text-sm text-text/75">
-            {selection.size === MAX_BULK_DELETE ? '100-pin limit reached.' : 'Choose pins from the grid.'}
+            {selection.size === MAX_BULK_DELETE ? `${MAX_BULK_DELETE.toLocaleString('en-US')}-pin limit reached.` : 'Choose pins from the grid.'}
           </p>
-          {canSelectShown && (
+          {shownSelectionCount > 0 && (
             <button type="button" onClick={selectShown} className="min-h-10 text-sm font-semibold text-text underline-offset-4 hover:underline">
-              Select shown ({shownUnselected.length})
+              {shownSelectionCount < shownUnselected.length
+                ? `Select next ${shownSelectionCount.toLocaleString('en-US')} shown`
+                : `Select shown (${shownSelectionCount.toLocaleString('en-US')})`}
             </button>
           )}
         </div>
@@ -482,7 +486,7 @@ function CollectionSearchContent({
       {selecting && (
         <div data-pin-selection className="pointer-events-none fixed inset-x-0 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[80] flex justify-center px-3 sm:px-4">
           <div className="pointer-events-auto flex w-full max-w-lg flex-wrap items-center justify-between gap-x-2 gap-y-1 rounded-2xl border border-line bg-white/95 p-2 pl-3 shadow-xl backdrop-blur motion-safe:animate-toast-in sm:pl-5">
-            <output className="shrink-0 text-sm font-bold tabular-nums">{selection.size} selected</output>
+            <output className="shrink-0 text-sm font-bold tabular-nums">{selection.size.toLocaleString('en-US')} selected</output>
             <div className="ml-auto flex items-center gap-1 sm:gap-2">
               <button
                 type="button"

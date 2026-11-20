@@ -240,8 +240,17 @@
 .animate-toast-in { animation: toast-in 0.22s cubic-bezier(0.22, 1, 0.36, 1); }
 
 body:has([data-pin-selection]) [data-admin-dock] { visibility: hidden; }
+body:has([data-pin-selection]) [data-toast-stack] {
+  bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 3.5rem);
+}
 section.wrap:has([data-pin-selection]) { padding-bottom: 7rem; }
 body:has(dialog[data-bulk-delete][open]) { overflow: hidden; }
+
+@media (max-width: 359px) {
+  body:has([data-pin-selection]) [data-toast-stack] {
+    bottom: calc(max(0.75rem, env(safe-area-inset-bottom)) + 6.25rem);
+  }
+}
 
 /* Compact phone gutters give the artwork room without cropping the pins. */
 @media (max-width: 639px) {
