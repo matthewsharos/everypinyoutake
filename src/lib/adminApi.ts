@@ -1,10 +1,4 @@
-import { supabaseBrowser as sb } from './supabaseBrowser';
 import type { Pin, CollectedType } from './pins';
-
-const CARD_SELECT =
-  'id,pin_name,image_url,image_url2,image_url3,year,series,origin,edition,external_url,external_pin_id,is_limited_edition,is_mystery,is_ap,is_pp,created_at';
-
-const SEARCH_FIELDS = ['pin_name', 'series', 'origin', 'edition', 'tags', 'notes'];
 
 export interface PinInput {
   pin_name: string;
@@ -26,49 +20,21 @@ export interface PinInput {
   is_pp?: boolean;
 }
 
-function orFilter(q: string): string | null {
-  const s = q.replace(/[%,()]/g, ' ').trim();
-  return s ? SEARCH_FIELDS.map((f) => `${f}.ilike.%${s}%`).join(',') : null;
+async function readArchive(params: URLSearchParams): Promise<Pin[]> {
+  const response = await fetch(`/api/admin/archive?${params}`);
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error ?? 'Unable to load the pin archive.');
+  return data.pins;
 }
 
-// ---- Reads (public anon client) -------------------------------------------
-
-/** Search the reference catalog (admin-only) to add pins from. */
-export async function searchArchive(q: string, limit = 90, offset = 0): Promise<Pin[]> {
-  const s = q.trim();
-  const { data: rpcData, error: rpcError } = await sb
-    .rpc('search_archive', { q: s, p_limit: limit, p_offset: offset })
-    .select(CARD_SELECT);
-  if (!rpcError && Array.isArray(rpcData)) return rpcData as Pin[];
-
-  let query = sb
-    .from('pin_archive')
-    .select(CARD_SELECT)
-    .eq('already_on_site', false)
-    .range(offset, offset + limit - 1);
-  const f = orFilter(s);
-  if (f) query = query.or(f);
-  else query = query.order('updated_at', { ascending: false });
-  const { data, error } = await query;
-  if (error) throw error;
-  return (data ?? []) as Pin[];
+/** Search the reference catalog to add pins from. */
+export function searchArchive(q: string, limit = 90, offset = 0): Promise<Pin[]> {
+  return readArchive(new URLSearchParams({ q, limit: String(limit), offset: String(offset) }));
 }
 
 /** Newest addable PinPics archive rows for the admin landing view. */
-export async function recentArchivePins(limit = 18): Promise<Pin[]> {
-  const { data: rpcData, error: rpcError } = await sb
-    .rpc('recent_archive_pins', { p_limit: limit })
-    .select(CARD_SELECT);
-  if (!rpcError && Array.isArray(rpcData)) return rpcData as Pin[];
-
-  const { data, error } = await sb
-    .from('pin_archive')
-    .select(CARD_SELECT)
-    .eq('already_on_site', false)
-    .order('id', { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  return (data ?? []) as Pin[];
+export function recentArchivePins(limit = 18): Promise<Pin[]> {
+  return readArchive(new URLSearchParams({ limit: String(limit) }));
 }
 
 // ---- Writes (server endpoints, authorized by the admin cookie) -------------

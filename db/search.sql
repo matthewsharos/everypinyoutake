@@ -350,8 +350,10 @@ $$;
 drop trigger if exists refresh_pin_archive_site_flags_after_pins_change on public.pins;
 drop function if exists public.refresh_pin_archive_site_flags_trigger();
 
-revoke execute on function public.refresh_pin_archive_site_flags() from anon, authenticated;
-revoke execute on function public.mark_pin_archive_site_flags_for_pin(bigint) from anon, authenticated;
+revoke execute on function public.refresh_pin_archive_site_flags() from public, anon, authenticated;
+revoke execute on function public.mark_pin_archive_site_flags_for_pin(bigint) from public, anon, authenticated;
+grant execute on function public.refresh_pin_archive_site_flags(),
+  public.mark_pin_archive_site_flags_for_pin(bigint) to service_role;
 
 -- Typo-tolerant search over the live collection (public), sorted before paging.
 -- Default search order is most recently added, matching the public sort control.
@@ -491,3 +493,8 @@ returns table (
   order by public.epyt_norm_external_id(p.external_pin_id)::bigint desc
   limit least(greatest(coalesce(p_limit, 18), 1), 500);
 $$;
+
+revoke execute on function public.search_archive(text, integer, integer),
+  public.recent_archive_pins(integer) from public, anon, authenticated;
+grant execute on function public.search_archive(text, integer, integer),
+  public.recent_archive_pins(integer) to service_role;

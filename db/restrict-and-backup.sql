@@ -25,7 +25,8 @@ alter table public.pins_backup enable row level security;
 
 -- Snapshot function: copies ALL current pins into one backup row. Returns the count.
 create or replace function public.snapshot_pins(p_kind text default 'weekly')
-returns integer language plpgsql security definer as $$
+returns integer language plpgsql security definer
+set search_path = pg_catalog, pg_temp as $$
 declare n integer;
 begin
   insert into public.pins_backup (kind, pin_count, data)
@@ -34,6 +35,7 @@ begin
   returning pin_count into n;
   return n;
 end; $$;
+revoke execute on function public.snapshot_pins(text) from public, anon, authenticated;
 
 -- Weekly automatic snapshot (Sundays 05:00 UTC).
 -- Enable pg_cron first: Dashboard → Database → Extensions → enable "pg_cron".
@@ -58,7 +60,8 @@ drop policy if exists epyt_read_pins on public.pins;
 create policy epyt_read_pins on public.pins for select using (true);
 
 drop policy if exists epyt_read_archive on public.pin_archive;
-create policy epyt_read_archive on public.pin_archive for select using (true);
+drop policy if exists "Allow public read access to pin_archive" on public.pin_archive;
+revoke all on public.pin_archive from public, anon, authenticated;
 
 drop policy if exists epyt_read_banners on public.banner_images;
 create policy epyt_read_banners on public.banner_images for select using (true);
@@ -72,4 +75,5 @@ drop policy if exists epyt_insert_contact on public.contact_submissions;
 create policy epyt_insert_contact on public.contact_submissions for insert with check (true);
 
 -- Intentionally NO insert/update/delete policies for the public key on pins,
--- pin_archive, banner_images, tiktok_urls => the public key is read-only there.
+-- banner_images and tiktok_urls are public read-only. The Studio reads the
+-- pin_archive through its authenticated server endpoint.
